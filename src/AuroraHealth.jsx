@@ -377,14 +377,24 @@ export default function AuroraHealth() {
   const [tab, setTab] = useState("dashboard");
   const [expanded, setExpanded] = useState(null);
   const [dismissed, setDismissed] = useState([]);
-  const [prefs, setPrefs] = useState({ name: "", conditions: ["Migraines","Heart Health","Mental Health"], sensitivity: "Medium", apiKey: "", onboarded: false });
+  const defaultPrefs = { name: "", conditions: ["Migraines","Heart Health","Mental Health"], sensitivity: "Medium", apiKey: "", onboarded: false };
+
+  const [prefs, setPrefs] = useState(() => {
+    try {
+      const stored = localStorage.getItem("aurora_prefs");
+      return stored ? { ...defaultPrefs, ...JSON.parse(stored) } : defaultPrefs;
+    } catch { return defaultPrefs; }
+  });
   const [step, setStep] = useState(1);
   const [oName, setOName] = useState("");
   const [oConds, setOConds] = useState(["Migraines","Heart Health","Mental Health"]);
   const [oSens, setOSens] = useState("Medium");
   const mainRef = useRef(null);
   const nameRef = useRef(null);
-  const save = useCallback(p => setPrefs(p), []);
+  const save = useCallback(p => {
+    setPrefs(p);
+    try { localStorage.setItem("aurora_prefs", JSON.stringify(p)); } catch {}
+  }, []);
 
   const load = useCallback(async () => {
     setBusy(true);
