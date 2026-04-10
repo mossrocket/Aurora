@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Brain, Heart, SmilePlus, Bone, Moon, BatteryLow, ChevronDown, Check, RefreshCw, Sun, AlertTriangle, Settings, CircleCheckBig, Sparkles, BookOpen, ExternalLink, Info, ShieldAlert } from "lucide-react";
+import { Brain, Heart, SmilePlus, Bone, Moon, BatteryLow, ChevronDown, Check, RefreshCw, Sun, AlertTriangle, Settings, CircleCheckBig, Sparkles, BookOpen, ExternalLink, Info, ShieldAlert, Activity, Gauge } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    AURORA HEALTH v3.0
@@ -545,6 +545,7 @@ export default function AuroraHealth() {
   const [oName, setOName] = useState("");
   const [oConds, setOConds] = useState(["Migraines","Heart Health","Mental Health"]);
   const [oSens, setOSens] = useState("Medium");
+  const [tipIndex] = useState(() => Math.floor(Math.random() * DID_YOU_KNOW.length));
   const mainRef = useRef(null);
   const nameRef = useRef(null);
   const save = useCallback(p => {
@@ -694,7 +695,7 @@ export default function AuroraHealth() {
                   <p style={{ fontSize: 13, color: T.textTertiary, fontWeight: 400, margin: 0 }}>{today}</p>
                   {!isLiveData && !prefs.apiKey && <span style={{ fontSize: 10, fontWeight: 600, color: T.amber, background: T.amberSoft, border: "1px solid " + T.amberBorder, borderRadius: 6, padding: "2px 8px" }}>Sample data</span>}
                 </div>
-                <h1 style={{ fontSize: 20, fontWeight: 600, color: T.text, margin: "2px 0 0" }}>How space weather may affect you</h1>
+                <h1 style={{ fontSize: 20, fontWeight: 600, color: T.text, margin: "2px 0 0" }}>How space weather may affect you today</h1>
               </div>
 
               {/* 1 — ALERTS */}
@@ -731,7 +732,7 @@ export default function AuroraHealth() {
                   <span style={{ fontSize: 11, color: T.purple, fontWeight: 600 }}>Did you know</span>
                 </div>
                 <p style={{ fontSize: 13, color: T.textSecondary, margin: 0, lineHeight: 1.65, fontWeight: 400 }}>
-                  {DID_YOU_KNOW[Math.floor(Date.now() / 86400000) % DID_YOU_KNOW.length]}
+                  {DID_YOU_KNOW[tipIndex]}
                 </p>
               </aside>
 
@@ -771,6 +772,45 @@ export default function AuroraHealth() {
                   How space weather connects to your wellbeing — and the research behind Aurora's insights.
                 </p>
               </div>
+
+              {/* LIVE DATA DASHBOARD */}
+              {solar && (
+                <section className="m-card" style={{ borderRadius: 20, padding: 20, boxShadow: T.elevation2 }} aria-label="Current space weather data">
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                    <Activity size={16} color={T.green} strokeWidth={1.8}/>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: T.green }}>Live space weather data</span>
+                    {isLiveData && <span style={{ fontSize: 10, color: T.textTertiary, fontWeight: 400, marginLeft: "auto" }}>via Bureau of Meteorology</span>}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+                    <div style={{ background: T.surface2, borderRadius: T.radiusSm, padding: "12px 14px", textAlign: "center" }}>
+                      <div style={{ fontSize: 10, color: T.textTertiary, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4 }}>Kp index</div>
+                      <div style={{ fontSize: 24, fontWeight: 700, color: solarScale(solar.kpIndex).color, lineHeight: 1 }}>{solar.kpIndex}</div>
+                      <div style={{ fontSize: 11, color: T.textTertiary, marginTop: 3, fontWeight: 400 }}>{kpLabel(solar.kpIndex)}</div>
+                    </div>
+                    <div style={{ background: T.surface2, borderRadius: T.radiusSm, padding: "12px 14px", textAlign: "center" }}>
+                      <div style={{ fontSize: 10, color: T.textTertiary, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4 }}>A-index</div>
+                      <div style={{ fontSize: 24, fontWeight: 700, color: T.purple, lineHeight: 1 }}>{solar.aIndex ?? "—"}</div>
+                      <div style={{ fontSize: 11, color: T.textTertiary, marginTop: 3, fontWeight: 400 }}>Daily activity</div>
+                    </div>
+                    <div style={{ background: T.surface2, borderRadius: T.radiusSm, padding: "12px 14px", textAlign: "center" }}>
+                      <div style={{ fontSize: 10, color: T.textTertiary, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4 }}>Overall</div>
+                      <div style={{ fontSize: 24, fontWeight: 700, color: rk[overall].text, lineHeight: 1 }}>
+                        <Gauge size={24} strokeWidth={1.8}/>
+                      </div>
+                      <div style={{ fontSize: 11, color: rk[overall].text, marginTop: 3, fontWeight: 500, textTransform: "capitalize" }}>{overall === "low" ? "All clear" : overall}</div>
+                    </div>
+                  </div>
+
+                  <SolarActivityBar kp={solar.kpIndex}/>
+
+                  <div style={{ marginTop: 14, borderTop: "1px solid " + T.border, paddingTop: 12 }}>
+                    <p style={{ fontSize: 12, color: T.textTertiary, margin: 0, lineHeight: 1.55, fontWeight: 400 }}>
+                      This is the raw data Aurora uses to generate your health insights. The Kp index measures disturbance in Earth's magnetic field on a 0–9 scale. The A-index summarises daily geomagnetic activity. Your sensitivity setting adjusts how these values translate into the alerts you see on the Today tab.
+                    </p>
+                  </div>
+                </section>
+              )}
 
               <LearnCard
                 title="What is a geomagnetic storm?"
@@ -894,7 +934,6 @@ export default function AuroraHealth() {
                 <span style={{ fontSize: 18 }}>☕</span> Buy me a coffee
               </a>
 
-              <button className="btn-tonal" onClick={() => { save({ ...prefs, onboarded: false }); setStep(1); setOName(""); }}>Restart onboarding</button>
             </div>
           )}
         </>)}
@@ -918,3 +957,4 @@ export default function AuroraHealth() {
     </div>
   );
 }
+
