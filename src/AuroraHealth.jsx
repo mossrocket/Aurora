@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Brain, Heart, SmilePlus, Bone, Moon, BatteryLow, ChevronDown, Check, RefreshCw, Sun, AlertTriangle, Settings, CircleCheckBig, Sparkles } from "lucide-react";
+import { Brain, Heart, SmilePlus, Bone, Moon, BatteryLow, ChevronDown, Check, RefreshCw, Sun, AlertTriangle, Settings, CircleCheckBig, Sparkles, BookOpen, ExternalLink } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    AURORA HEALTH v3.0
@@ -428,6 +428,51 @@ function Logo({ size = 40, style: sx = {} }) {
     onError={e => { e.currentTarget.style.display = "none"; }}/>;
 }
 
+function LearnCard({ title, body, color, citations }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="m-card" style={{ borderColor: open ? (color + "44") : undefined, boxShadow: open ? T.elevation2 : T.elevation1 }}>
+      <button
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, padding: 0, fontFamily: font, textAlign: "left" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+          <div style={{ width: 4, height: 20, borderRadius: 2, background: color, flexShrink: 0 }}/>
+          <span style={{ fontSize: 14, fontWeight: 600, color: T.text, lineHeight: 1.4 }}>{title}</span>
+        </div>
+        <span style={{ color: "rgba(255,255,255,0.2)", width: 16, height: 16, display: "inline-flex", flexShrink: 0, marginTop: 2, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>
+          <ChevronDown size={16} strokeWidth={2}/>
+        </span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 14, borderTop: `1px solid ${T.border}`, paddingTop: 14 }}>
+          <p style={{ fontSize: 13, color: T.textSecondary, margin: 0, lineHeight: 1.7, fontWeight: 400 }}>{body}</p>
+          {citations && citations.length > 0 && (
+            <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: T.textTertiary, letterSpacing: "0.06em", textTransform: "uppercase" }}>Sources</div>
+              {citations.map((c, i) => (
+                <a
+                  key={i}
+                  href={c.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: 12, color: T.purple, textDecoration: "none", display: "flex", alignItems: "flex-start", gap: 6, lineHeight: 1.45, fontWeight: 400, transition: "color 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.color = T.rose}
+                  onMouseLeave={e => e.currentTarget.style.color = T.purple}
+                >
+                  <ExternalLink size={12} strokeWidth={1.8} style={{ flexShrink: 0, marginTop: 2 }}/>
+                  <span>{c.label}</span>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 export default function AuroraHealth() {
   const [solar, setSolar] = useState(null);
@@ -550,7 +595,7 @@ export default function AuroraHealth() {
   );
 
   // ── MAIN APP ───────────────────────────────────────────────────────────
-  const TABS = [{ id: "dashboard", label: "Today", Icon: Sun }, { id: "alerts", label: "Alerts", Icon: AlertTriangle }, { id: "settings", label: "Settings", Icon: Settings }];
+  const TABS = [{ id: "dashboard", label: "Today", Icon: Sun }, { id: "alerts", label: "Alerts", Icon: AlertTriangle }, { id: "learn", label: "Learn", Icon: BookOpen }, { id: "settings", label: "Settings", Icon: Settings }];
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg, fontFamily: font, color: T.text, maxWidth: 480, margin: "0 auto", position: "relative" }}>
@@ -579,7 +624,7 @@ export default function AuroraHealth() {
 
       {/* CONTENT */}
       <main id="main" ref={mainRef} tabIndex={-1} style={{ padding: "16px 16px 100px", position: "relative", zIndex: 1, outline: "none" }}
-        aria-label={tab === "dashboard" ? "Today's solar health" : tab === "alerts" ? "Health alerts" : "Settings"}>
+        aria-label={tab === "dashboard" ? "Today's solar health" : tab === "alerts" ? "Health alerts" : tab === "learn" ? "The science" : "Settings"}>
 
         {loading ? (
           <div style={{ textAlign: "center", padding: "80px 0" }} role="status">
@@ -651,6 +696,81 @@ export default function AuroraHealth() {
             </div>
           )}
 
+          {/* ════ LEARN ════ */}
+          {tab === "learn" && (
+            <div className="fade-up" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ marginBottom: 2 }}>
+                <h1 style={{ fontSize: 20, fontWeight: 600, color: T.text, margin: "0 0 4px" }}>The science</h1>
+                <p style={{ fontSize: 13, color: T.textSecondary, margin: 0, lineHeight: 1.55, fontWeight: 400 }}>
+                  How space weather connects to your wellbeing — and the research behind Aurora's insights.
+                </p>
+              </div>
+
+              <LearnCard
+                title="What is a geomagnetic storm?"
+                body="The sun regularly releases bursts of charged particles called coronal mass ejections (CMEs). When these reach Earth, they interact with our planet's magnetic field, causing temporary disturbances called geomagnetic storms. These are measured on the Kp index — a scale from 0 (calm) to 9 (extreme). Aurora translates this scale into plain language so you don't need to interpret the numbers yourself."
+                color={T.green}
+              />
+
+              <LearnCard
+                title="How can solar weather affect my body?"
+                body="Your body runs on electrical signals and biological rhythms. Research suggests that fluctuations in Earth's magnetic field during geomagnetic storms can subtly influence these systems — particularly melatonin production (the hormone that regulates your sleep cycle), heart rate variability, blood pressure, and nervous system activity. Not everyone is equally sensitive, but those who are may notice changes in sleep, energy, mood, or pain levels during active solar periods."
+                color={T.purple}
+              />
+
+              <LearnCard
+                title="Sleep and melatonin"
+                body="One of the most studied connections is between geomagnetic activity and melatonin — the hormone your pineal gland produces to regulate sleep. Research at high latitudes found that geomagnetic disturbances above 80 nT significantly reduced melatonin concentration. A separate study of 153 workers found that elevated geomagnetic activity was consistently associated with lower overnight melatonin output. This may explain why some people experience insomnia or restless sleep during solar storms."
+                color={T.rose}
+                citations={[
+                  { label: "Weydahl et al. (2001) — Geomagnetic activity influences melatonin secretion at latitude 70°N", url: "https://www.sciencedirect.com/science/article/abs/pii/S075333220190006X" },
+                  { label: "Burch et al. (2008) — Geomagnetic activity and human melatonin metabolite excretion", url: "https://pubmed.ncbi.nlm.nih.gov/18981356/" },
+                ]}
+              />
+
+              <LearnCard
+                title="Heart health and cardiovascular risk"
+                body="A 2024 systematic review and meta-analysis found that geomagnetic storms were associated with a 30–50% increase in relative risk of heart attack and acute coronary syndrome, and a 25–60% increase in stroke risk. A large-scale study from São Paulo analysing hospital admissions from 1998–2005 found significantly more cardiac events during high Kp-index days — with women over 30 showing the greatest sensitivity."
+                color={T.red}
+                citations={[
+                  { label: "PMC Meta-analysis (2024) — GS influence on MI, ACS & stroke risk", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12005662/" },
+                  { label: "Communications Medicine (2024) — Solar storms and cardiac admissions in Brazil", url: "https://www.foxweather.com/earth-space/health-study-impact-solar-geomagnetic-storms" },
+                ]}
+              />
+
+              <LearnCard
+                title="Migraines and headaches"
+                body="Geomagnetic disturbances may trigger migraines through several pathways: disrupting melatonin and serotonin production, altering blood flow in the brain via the trigeminovascular system, and shifting autonomic nervous system balance. A study published in Cephalalgia found significantly higher migraine frequency during geomagnetic storms, and a PMC review confirmed correlations between storm intensity and episodes of moderate-to-severe migraine."
+                color={T.amber}
+                citations={[
+                  { label: "PMC Review (2023) — Biological effects of magnetic storms", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10740910/" },
+                ]}
+              />
+
+              <LearnCard
+                title="Mental health and mood"
+                body="Research has found statistical links between geomagnetic activity and increased anxiety, irritability, and depressive episodes. The proposed mechanism involves disruption to the brain's electrical activity and neurotransmitter balance — particularly serotonin and melatonin. A 2025 laboratory study found that moderate geomagnetic storms actually protected against depressive behaviour in animal models by activating melatonin pathways, while extreme storms had the opposite effect."
+                color={T.purple}
+                citations={[
+                  { label: "ScienceDirect (2025) — Geomagnetic storm effects on depression mechanisms", url: "https://www.sciencedirect.com/science/article/pii/S0361923025001819" },
+                  { label: "Babayev (2007) — Geomagnetic activity effects on psychological state", url: "https://www.sciencedirect.com/science/article/abs/pii/S0273117707009404" },
+                ]}
+              />
+
+              <LearnCard
+                title="Who is most affected?"
+                body="Not everyone will notice the effects of space weather. Research suggests those most likely to be sensitive include people with pre-existing cardiovascular conditions, people who experience migraines, those with sleep disorders or disrupted circadian rhythms, people living at higher geomagnetic latitudes, and individuals who are already stressed or sleep-deprived. Aurora helps you track which conditions matter to you and provides personalised guidance based on current solar activity."
+                color={T.green}
+              />
+
+              <LearnCard
+                title="A note on the science"
+                body="This is an active area of research. While many studies show correlations between geomagnetic activity and health effects, establishing definitive cause-and-effect is complex. The mechanisms are still being investigated, and some findings are debated within the scientific community. Aurora presents the best available evidence to help you stay informed — not to diagnose or replace medical advice. If you have concerns about your health, always consult a healthcare professional."
+                color={T.textTertiary}
+              />
+            </div>
+          )}
+
           {/* ════ SETTINGS ════ */}
           {tab === "settings" && (
             <div className="fade-up" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -700,6 +820,13 @@ export default function AuroraHealth() {
                   <input id="s-key" type="password" className="m-input" value={prefs.apiKey || ""} onChange={e => save({ ...prefs, apiKey: e.target.value })} placeholder="Your SWS API key" aria-describedby="s-key-desc" autoComplete="off"/>
                 </div>
               </section>
+
+              <a href="https://buymeacoffee.com/aurorahealth" target="_blank" rel="noopener noreferrer"
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: "rgba(255,221,0,0.08)", border: "1px solid rgba(255,221,0,0.20)", borderRadius: T.radius, padding: 14, fontSize: 14, fontWeight: 500, color: "#ffdd00", textDecoration: "none", transition: "background 0.15s, border-color 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,221,0,0.14)"; e.currentTarget.style.borderColor = "rgba(255,221,0,0.35)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,221,0,0.08)"; e.currentTarget.style.borderColor = "rgba(255,221,0,0.20)"; }}>
+                <span style={{ fontSize: 18 }}>☕</span> Buy me a coffee
+              </a>
 
               <button className="btn-tonal" onClick={() => { save({ ...prefs, onboarded: false }); setStep(1); setOName(""); }}>Restart onboarding</button>
             </div>
