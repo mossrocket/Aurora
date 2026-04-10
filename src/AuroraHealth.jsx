@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Brain, Heart, SmilePlus, Bone, Moon, BatteryLow, ChevronDown, Check, RefreshCw, Sun, AlertTriangle, Settings, CircleCheckBig, Sparkles, BookOpen, ExternalLink, Info, ShieldAlert } from "lucide-react";
+import { Analytics } from "@vercel/analytics/react";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    AURORA HEALTH v3.0
@@ -915,6 +916,7 @@ export default function AuroraHealth() {
           );
         })}
       </nav>
+      <Analytics />
     </div>
   );
 }
