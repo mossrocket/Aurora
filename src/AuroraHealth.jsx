@@ -586,25 +586,6 @@ export default function AuroraHealth() {
     try { localStorage.setItem("aurora_diary", JSON.stringify(entries)); } catch {}
   }, []);
 
-  const addDiaryEntry = useCallback(() => {
-    if (!diaryInput.trim() && !diaryMood) return;
-    const entry = {
-      id: Date.now(),
-      text: diaryInput.trim(),
-      mood: diaryMood,
-      timestamp: new Date().toISOString(),
-      snapshot: solar ? {
-        kpIndex: solar.kpIndex,
-        solarLevel: solarScale(solar.kpIndex).label,
-        conditions: risks.map(r => ({ condition: r.condition, level: r.level })),
-        overall,
-      } : null,
-    };
-    saveDiary([entry, ...diary]);
-    setDiaryInput("");
-    setDiaryMood(null);
-  }, [diaryInput, diaryMood, solar, risks, overall, diary, saveDiary]);
-
   const deleteDiaryEntry = useCallback((id) => {
     saveDiary(diary.filter(e => e.id !== id));
   }, [diary, saveDiary]);
@@ -647,6 +628,25 @@ export default function AuroraHealth() {
   const highN = risks.filter(r => r.level === "high").length;
   const modN = risks.filter(r => r.level === "moderate").length;
   const overall = highN > 0 ? "high" : modN > 0 ? "moderate" : "low";
+
+  const addDiaryEntry = () => {
+    if (!diaryInput.trim() && !diaryMood) return;
+    const entry = {
+      id: Date.now(),
+      text: diaryInput.trim(),
+      mood: diaryMood,
+      timestamp: new Date().toISOString(),
+      snapshot: solar ? {
+        kpIndex: solar.kpIndex,
+        solarLevel: solarScale(solar.kpIndex).label,
+        conditions: risks.map(r => ({ condition: r.condition, level: r.level })),
+        overall,
+      } : null,
+    };
+    saveDiary([entry, ...diary]);
+    setDiaryInput("");
+    setDiaryMood(null);
+  };
 
   useEffect(() => {
     const id = "aurora-css-v3";
