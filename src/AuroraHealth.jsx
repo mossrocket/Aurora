@@ -12,8 +12,8 @@ const HEALTH_RULES = [
     thresholds: [
       { max: 2, level: "low", desc: "Solar conditions are calm. Migraine triggers from space weather are very unlikely today.", tip: "A good day for cognitively demanding tasks." },
       { max: 4, level: "moderate", desc: "Some solar activity may increase sensitivity for migraine-prone individuals.", tip: "Keep hydrated and limit screen time in the evening." },
-      { max: 6, level: "high", desc: "Heightened solar activity is raising migraine risk for sensitive individuals.", tip: "Take preventative measures now — rest, magnesium, dim lighting." },
-      { max: 9, level: "high", desc: "Intense solar storm in progress. Migraine risk is at its highest.", tip: "Strongly consider staying indoors. Avoid bright lights and loud noise." },
+      { max: 6, level: "high", desc: "Some people prone to migraines report more sensitivity during heightened solar activity.", tip: "Rest, dim lighting, and hydration may help if you feel early symptoms." },
+      { max: 9, level: "high", desc: "Intense solar storm in progress. Migraine-prone individuals may experience heightened symptoms.", tip: "If you feel symptoms, a dim, quiet space may help. Follow your usual migraine care plan." },
     ],
   },
   {
@@ -22,7 +22,7 @@ const HEALTH_RULES = [
       { max: 2, level: "low", desc: "Calm solar conditions. Your cardiovascular system is unlikely to be affected.", tip: "Good day for moderate exercise." },
       { max: 4, level: "low", desc: "Minimal space weather impact on heart health expected today.", tip: "Maintain your usual routine safely." },
       { max: 6, level: "moderate", desc: "Increased solar activity may slightly raise blood pressure and stress hormones in some people.", tip: "Avoid intense exercise. Stay calm and hydrated." },
-      { max: 9, level: "high", desc: "Strong solar storms have been linked to increased heart-related risks.", tip: "If you have a heart condition, contact your doctor. Rest and avoid exertion." },
+      { max: 9, level: "high", desc: "Strong solar storms have been linked to increased heart-related risks.", tip: "Rest and avoid strenuous exertion today. If you have a heart condition and feel unwell, follow your usual care plan." },
     ],
   },
   {
@@ -37,10 +37,10 @@ const HEALTH_RULES = [
   {
     condition: "Joint Pain", icon: "bone", slug: "joints",
     thresholds: [
-      { max: 2, level: "low", desc: "Stable atmospheric conditions. Joint comfort expected today.", tip: "A good day for gentle stretching or walks." },
-      { max: 4, level: "low", desc: "Minimal pressure changes expected. Joints should feel comfortable.", tip: "Normal activity levels are fine." },
-      { max: 6, level: "moderate", desc: "Solar activity can shift atmospheric pressure, which may increase joint discomfort.", tip: "Consider anti-inflammatory foods or warm compresses if you feel discomfort." },
-      { max: 9, level: "high", desc: "Strong solar storms may noticeably worsen joint stiffness and inflammation.", tip: "Rest, apply heat, and consider pain relief medication if needed." },
+      { max: 2, level: "low", desc: "Calm solar conditions. Joint comfort likely today.", tip: "A good day for gentle stretching or walks." },
+      { max: 4, level: "low", desc: "Calm solar activity. Joints should feel comfortable.", tip: "Normal activity levels are fine." },
+      { max: 6, level: "moderate", desc: "Some people with chronic joint conditions report more discomfort during active geomagnetic periods, though evidence is limited and the mechanism isn't well understood.", tip: "If you notice discomfort, gentle movement and warmth may help." },
+      { max: 9, level: "high", desc: "During strong geomagnetic storms, some people with joint conditions describe increased stiffness. Individual experience varies widely.", tip: "Rest, apply heat, and follow your usual care plan." },
     ],
   },
   {
@@ -49,7 +49,7 @@ const HEALTH_RULES = [
       { max: 2, level: "low", desc: "Excellent conditions for deep, restorative sleep tonight.", tip: "Take advantage — aim for 8 hours tonight." },
       { max: 4, level: "low", desc: "Good sleep conditions. Space weather is unlikely to disturb your rest.", tip: "Maintain your usual wind-down routine." },
       { max: 6, level: "moderate", desc: "Solar activity may interfere with your sleep hormone (melatonin), making it harder to fall asleep.", tip: "Avoid screens 2 hours before bed. Try blackout curtains and a cool room." },
-      { max: 9, level: "high", desc: "Intense solar storms commonly cause difficulty sleeping and vivid dreams.", tip: "Go to bed early. Avoid caffeine after noon. Consider magnesium supplements." },
+      { max: 9, level: "high", desc: "Intense solar storms commonly cause difficulty sleeping and vivid dreams.", tip: "Go to bed early. Avoid caffeine after noon and screens in the hour before sleep." },
     ],
   },
   {
@@ -57,7 +57,7 @@ const HEALTH_RULES = [
     thresholds: [
       { max: 2, level: "low", desc: "Calm solar conditions support your natural energy levels.", tip: "A productive, energetic day ahead." },
       { max: 4, level: "low", desc: "Space weather is unlikely to affect your energy today.", tip: "Energy levels should remain stable." },
-      { max: 6, level: "moderate", desc: "Increased solar activity may cause unexplained tiredness in some people.", tip: "Pace yourself. Prioritise iron-rich foods and short rest breaks." },
+      { max: 6, level: "moderate", desc: "Increased solar activity may cause unexplained tiredness in some people.", tip: "Pace yourself and take short rest breaks when you need them." },
       { max: 9, level: "high", desc: "Intense solar storms can cause significant fatigue — even for people who aren't usually sensitive.", tip: "Do not push through exhaustion today. Rest is the best medicine." },
     ],
   },
@@ -67,7 +67,7 @@ const HEALTH_RULES = [
       { max: 2, level: "low", desc: "Calm solar conditions. Neurological sensitivity is unlikely to be triggered today.", tip: "A stable day — good for activities that require concentration and coordination." },
       { max: 4, level: "low", desc: "Minor space weather activity. Most people with neurological conditions won't notice changes.", tip: "Maintain your usual routines and medication schedules." },
       { max: 6, level: "moderate", desc: "Increased solar activity may affect nerve signalling and inflammation in sensitive individuals. People with MS, epilepsy, or neuropathy may notice increased symptoms.", tip: "Monitor your symptoms. Rest if you feel tingling, numbness, or increased fatigue. Stay cool and hydrated." },
-      { max: 9, level: "high", desc: "Intense solar storms can significantly affect the nervous system. People with neurological conditions may experience symptom flares, increased pain, or cognitive difficulty.", tip: "Prioritise rest and avoid overstimulation. Contact your neurologist if symptoms worsen significantly. Keep medications accessible." },
+      { max: 9, level: "high", desc: "Intense solar storms can significantly affect the nervous system. People with neurological conditions may experience symptom flares, increased pain, or cognitive difficulty.", tip: "Prioritise rest and avoid overstimulation. Follow your usual care plan if symptoms concern you." },
     ],
   },
 ];
@@ -127,24 +127,35 @@ const MOCK = { kpIndex: 4, aIndex: 18, dstIndex: -22, stormStatus: "Unsettled", 
 
 const LOGO_URI = "/Auroralogo.png";
 
-async function fetchSolar(key) {
+async function fetchSolar() {
+  // Live planetary Kp + running a-index from NOAA SWPC via our /api/noaa proxy.
+  // No API key required. On any upstream failure we fall back to MOCK and the
+  // dashboard shows a "Sample data" badge.
   try {
-    if (!key) throw new Error("No API key");
-    const query = `?api_key=${encodeURIComponent(key)}`;
     const [kRes, aRes] = await Promise.all([
-      fetch(`/api/sws/get-k-index${query}`),
-      fetch(`/api/sws/get-a-index${query}`),
+      fetch(`/api/noaa/get-kp-index`),
+      fetch(`/api/noaa/get-ap-index`),
     ]);
-    if (!kRes.ok || !aRes.ok) throw new Error("API error");
+    if (!kRes.ok || !aRes.ok) throw new Error(`Upstream failed (Kp ${kRes.status}, A ${aRes.status})`);
     const kData = await kRes.json();
     const aData = await aRes.json();
-    // SWS returns { data: [{ index: N, valid_time: "..." }, ...] } — latest first
-    const kArr = kData.data || kData;
-    const aArr = aData.data || aData;
-    const kp = Number(Array.isArray(kArr) ? kArr[0]?.index : kArr?.index) || 0;
-    const a = Number(Array.isArray(aArr) ? aArr[0]?.index : aArr?.index) || 0;
-    return { kpIndex: kp, aIndex: a, dstIndex: 0, stormStatus: kpLabel(kp), summary: `Live data — last updated ${kArr[0]?.valid_time?.slice(0, 16) || "recently"}`, live: true };
-  } catch { return { ...MOCK, live: false }; }
+    const kArr = kData.data || [];
+    const aArr = aData.data || [];
+    const kp = Number(kArr[0]?.index) || 0;
+    const a = Number(aArr[0]?.index) || 0;
+    const stamp = kArr[0]?.valid_time?.slice(0, 16) || "recently";
+    return {
+      kpIndex: kp,
+      aIndex: a,
+      dstIndex: 0,
+      stormStatus: kpLabel(kp),
+      summary: `Live data — last updated ${stamp} UTC`,
+      live: true,
+    };
+  } catch (err) {
+    if (typeof console !== "undefined") console.warn("[Aurora] fetchSolar failed:", err?.message || err);
+    return { ...MOCK, live: false };
+  }
 }
 
 // ── THEME ──────────────────────────────────────────────────────────────────
@@ -608,7 +619,7 @@ export default function AuroraHealth() {
 
   const load = useCallback(async () => {
     setBusy(true);
-    const d = await fetchSolar(prefs.apiKey);
+    const d = await fetchSolar();
     setSolar(d); setIsLiveData(!!d.live); setLoading(false); setBusy(false); setDismissed([]);
     // Check if we should notify
     if (d.live && notificationsEnabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
@@ -617,7 +628,7 @@ export default function AuroraHealth() {
         new Notification("Aurora Health — Solar activity rising", { body: "Moderate solar activity detected. Check your tracked conditions.", icon: "/Auroralogo.png" });
       }
     }
-  }, [prefs.apiKey]);
+  }, []);
 
   useEffect(() => { load(); }, []);
   useEffect(() => { if (mainRef.current) mainRef.current.focus({ preventScroll: true }); }, [tab]);
@@ -772,7 +783,7 @@ export default function AuroraHealth() {
               <div style={{ marginBottom: 18 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <p style={{ fontSize: 13, color: T.textTertiary, fontWeight: 400, margin: 0 }}>{today}</p>
-                  {!isLiveData && !prefs.apiKey && <span style={{ fontSize: 10, fontWeight: 600, color: T.amber, background: T.amberSoft, border: "1px solid " + T.amberBorder, borderRadius: 6, padding: "2px 8px" }}>Sample data</span>}
+                  {!isLiveData && <span style={{ fontSize: 10, fontWeight: 600, color: T.amber, background: T.amberSoft, border: "1px solid " + T.amberBorder, borderRadius: 6, padding: "2px 8px" }}>Sample data</span>}
                 </div>
                 <h1 style={{ fontSize: 20, fontWeight: 600, color: T.text, margin: "2px 0 0" }}>How space weather may affect you today</h1>
               </div>
@@ -1115,9 +1126,13 @@ export default function AuroraHealth() {
               <section aria-labelledby="s-api">
                 <h2 id="s-api" className="section-title">Data source</h2>
                 <div className="m-card">
-                  <label htmlFor="s-key" style={{ display: "block", fontSize: 12, color: T.green, fontWeight: 500, marginBottom: 4 }}>SWS API key (optional)</label>
-                  <p id="s-key-desc" style={{ fontSize: 12, color: T.textTertiary, margin: "0 0 10px", lineHeight: 1.5, fontWeight: 400 }}>Add your free Bureau of Meteorology Space Weather API key to get live solar data. <a href="https://sws-data.sws.bom.gov.au/register" target="_blank" rel="noopener noreferrer" style={{ color: T.purple, textDecoration: "none", fontWeight: 500 }}>Register here</a> — it's free and instant.</p>
-                  <input id="s-key" type="password" className="m-input" value={prefs.apiKey || ""} onChange={e => save({ ...prefs, apiKey: e.target.value })} placeholder="Your SWS API key" aria-describedby="s-key-desc" autoComplete="off"/>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <Activity size={16} color={T.green} strokeWidth={1.8} style={{ flexShrink: 0, marginTop: 2 }}/>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: T.text, marginBottom: 2 }}>NOAA SWPC — planetary Kp</div>
+                      <p style={{ fontSize: 12, color: T.textTertiary, margin: 0, lineHeight: 1.5, fontWeight: 400 }}>Live data is pulled from the US National Oceanic and Atmospheric Administration's Space Weather Prediction Center. No sign-up or API key needed — it just works.</p>
+                    </div>
+                  </div>
                 </div>
               </section>
 
@@ -1184,6 +1199,10 @@ export default function AuroraHealth() {
     </div>
   );
 }
+
+
+
+
 
 
 
