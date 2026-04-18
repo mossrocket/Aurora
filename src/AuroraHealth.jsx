@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Brain, Heart, SmilePlus, Bone, Moon, BatteryLow, ChevronDown, Check, RefreshCw, Sun, AlertTriangle, Settings, CircleCheckBig, Sparkles, BookOpen, ExternalLink, Info, ShieldAlert, Activity, Gauge } from "lucide-react";
+import { Brain, Heart, SmilePlus, Bone, Moon, BatteryLow, ChevronDown, Check, RefreshCw, Sun, AlertTriangle, Settings, CircleCheckBig, Sparkles, BookOpen, ExternalLink, Info, ShieldAlert, Activity, Gauge, Zap, Bell, BellOff, NotebookPen, Plus, Calendar, Trash2, Camera } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    AURORA HEALTH v3.0
@@ -12,8 +12,8 @@ const HEALTH_RULES = [
     thresholds: [
       { max: 2, level: "low", desc: "Solar conditions are calm. Migraine triggers from space weather are very unlikely today.", tip: "A good day for cognitively demanding tasks." },
       { max: 4, level: "moderate", desc: "Some solar activity may increase sensitivity for migraine-prone individuals.", tip: "Keep hydrated and limit screen time in the evening." },
-      { max: 6, level: "high", desc: "Heightened solar activity is raising migraine risk for sensitive individuals.", tip: "Take preventative measures now — rest, magnesium, dim lighting." },
-      { max: 9, level: "high", desc: "Intense solar storm in progress. Migraine risk is at its highest.", tip: "Strongly consider staying indoors. Avoid bright lights and loud noise." },
+      { max: 6, level: "high", desc: "Some people prone to migraines report more sensitivity during heightened solar activity.", tip: "Rest, dim lighting, and hydration may help if you feel early symptoms." },
+      { max: 9, level: "high", desc: "Intense solar storm in progress. Migraine-prone individuals may experience heightened symptoms.", tip: "If you feel symptoms, a dim, quiet space may help. Follow your usual migraine care plan." },
     ],
   },
   {
@@ -22,7 +22,7 @@ const HEALTH_RULES = [
       { max: 2, level: "low", desc: "Calm solar conditions. Your cardiovascular system is unlikely to be affected.", tip: "Good day for moderate exercise." },
       { max: 4, level: "low", desc: "Minimal space weather impact on heart health expected today.", tip: "Maintain your usual routine safely." },
       { max: 6, level: "moderate", desc: "Increased solar activity may slightly raise blood pressure and stress hormones in some people.", tip: "Avoid intense exercise. Stay calm and hydrated." },
-      { max: 9, level: "high", desc: "Strong solar storms have been linked to increased heart-related risks.", tip: "If you have a heart condition, contact your doctor. Rest and avoid exertion." },
+      { max: 9, level: "high", desc: "Strong solar storms have been linked to increased heart-related risks.", tip: "Rest and avoid strenuous exertion today. If you have a heart condition and feel unwell, follow your usual care plan." },
     ],
   },
   {
@@ -37,10 +37,10 @@ const HEALTH_RULES = [
   {
     condition: "Joint Pain", icon: "bone", slug: "joints",
     thresholds: [
-      { max: 2, level: "low", desc: "Stable atmospheric conditions. Joint comfort expected today.", tip: "A good day for gentle stretching or walks." },
-      { max: 4, level: "low", desc: "Minimal pressure changes expected. Joints should feel comfortable.", tip: "Normal activity levels are fine." },
-      { max: 6, level: "moderate", desc: "Solar activity can shift atmospheric pressure, which may increase joint discomfort.", tip: "Consider anti-inflammatory foods or warm compresses if you feel discomfort." },
-      { max: 9, level: "high", desc: "Strong solar storms may noticeably worsen joint stiffness and inflammation.", tip: "Rest, apply heat, and consider pain relief medication if needed." },
+      { max: 2, level: "low", desc: "Calm solar conditions. Joint comfort likely today.", tip: "A good day for gentle stretching or walks." },
+      { max: 4, level: "low", desc: "Calm solar activity. Joints should feel comfortable.", tip: "Normal activity levels are fine." },
+      { max: 6, level: "moderate", desc: "Some people with chronic joint conditions report more discomfort during active geomagnetic periods, though evidence is limited and the mechanism isn't well understood.", tip: "If you notice discomfort, gentle movement and warmth may help." },
+      { max: 9, level: "high", desc: "During strong geomagnetic storms, some people with joint conditions describe increased stiffness. Individual experience varies widely.", tip: "Rest, apply heat, and follow your usual care plan." },
     ],
   },
   {
@@ -49,7 +49,7 @@ const HEALTH_RULES = [
       { max: 2, level: "low", desc: "Excellent conditions for deep, restorative sleep tonight.", tip: "Take advantage — aim for 8 hours tonight." },
       { max: 4, level: "low", desc: "Good sleep conditions. Space weather is unlikely to disturb your rest.", tip: "Maintain your usual wind-down routine." },
       { max: 6, level: "moderate", desc: "Solar activity may interfere with your sleep hormone (melatonin), making it harder to fall asleep.", tip: "Avoid screens 2 hours before bed. Try blackout curtains and a cool room." },
-      { max: 9, level: "high", desc: "Intense solar storms commonly cause difficulty sleeping and vivid dreams.", tip: "Go to bed early. Avoid caffeine after noon. Consider magnesium supplements." },
+      { max: 9, level: "high", desc: "Intense solar storms commonly cause difficulty sleeping and vivid dreams.", tip: "Go to bed early. Avoid caffeine after noon and screens in the hour before sleep." },
     ],
   },
   {
@@ -57,8 +57,17 @@ const HEALTH_RULES = [
     thresholds: [
       { max: 2, level: "low", desc: "Calm solar conditions support your natural energy levels.", tip: "A productive, energetic day ahead." },
       { max: 4, level: "low", desc: "Space weather is unlikely to affect your energy today.", tip: "Energy levels should remain stable." },
-      { max: 6, level: "moderate", desc: "Increased solar activity may cause unexplained tiredness in some people.", tip: "Pace yourself. Prioritise iron-rich foods and short rest breaks." },
+      { max: 6, level: "moderate", desc: "Increased solar activity may cause unexplained tiredness in some people.", tip: "Pace yourself and take short rest breaks when you need them." },
       { max: 9, level: "high", desc: "Intense solar storms can cause significant fatigue — even for people who aren't usually sensitive.", tip: "Do not push through exhaustion today. Rest is the best medicine." },
+    ],
+  },
+  {
+    condition: "Neurological", icon: "neuro", slug: "neuro",
+    thresholds: [
+      { max: 2, level: "low", desc: "Calm solar conditions. Neurological sensitivity is unlikely to be triggered today.", tip: "A stable day — good for activities that require concentration and coordination." },
+      { max: 4, level: "low", desc: "Minor space weather activity. Most people with neurological conditions won't notice changes.", tip: "Maintain your usual routines and medication schedules." },
+      { max: 6, level: "moderate", desc: "Increased solar activity may affect nerve signalling and inflammation in sensitive individuals. People with MS, epilepsy, or neuropathy may notice increased symptoms.", tip: "Monitor your symptoms. Rest if you feel tingling, numbness, or increased fatigue. Stay cool and hydrated." },
+      { max: 9, level: "high", desc: "Intense solar storms can significantly affect the nervous system. People with neurological conditions may experience symptom flares, increased pain, or cognitive difficulty.", tip: "Prioritise rest and avoid overstimulation. Follow your usual care plan if symptoms concern you." },
     ],
   },
 ];
@@ -118,24 +127,35 @@ const MOCK = { kpIndex: 4, aIndex: 18, dstIndex: -22, stormStatus: "Unsettled", 
 
 const LOGO_URI = "/Auroralogo.png";
 
-async function fetchSolar(key) {
+async function fetchSolar() {
+  // Live planetary Kp + running a-index from NOAA SWPC via our /api/noaa proxy.
+  // No API key required. On any upstream failure we fall back to MOCK and the
+  // dashboard shows a "Sample data" badge.
   try {
-    if (!key) throw new Error("No API key");
-    const query = `?api_key=${encodeURIComponent(key)}`;
     const [kRes, aRes] = await Promise.all([
-      fetch(`/api/sws/get-k-index${query}`),
-      fetch(`/api/sws/get-a-index${query}`),
+      fetch(`/api/noaa/get-kp-index`),
+      fetch(`/api/noaa/get-ap-index`),
     ]);
-    if (!kRes.ok || !aRes.ok) throw new Error("API error");
+    if (!kRes.ok || !aRes.ok) throw new Error(`Upstream failed (Kp ${kRes.status}, A ${aRes.status})`);
     const kData = await kRes.json();
     const aData = await aRes.json();
-    // SWS returns { data: [{ index: N, valid_time: "..." }, ...] } — latest first
-    const kArr = kData.data || kData;
-    const aArr = aData.data || aData;
-    const kp = Number(Array.isArray(kArr) ? kArr[0]?.index : kArr?.index) || 0;
-    const a = Number(Array.isArray(aArr) ? aArr[0]?.index : aArr?.index) || 0;
-    return { kpIndex: kp, aIndex: a, dstIndex: 0, stormStatus: kpLabel(kp), summary: `Live data — last updated ${kArr[0]?.valid_time?.slice(0, 16) || "recently"}`, live: true };
-  } catch { return { ...MOCK, live: false }; }
+    const kArr = kData.data || [];
+    const aArr = aData.data || [];
+    const kp = Number(kArr[0]?.index) || 0;
+    const a = Number(aArr[0]?.index) || 0;
+    const stamp = kArr[0]?.valid_time?.slice(0, 16) || "recently";
+    return {
+      kpIndex: kp,
+      aIndex: a,
+      dstIndex: 0,
+      stormStatus: kpLabel(kp),
+      summary: `Live data — last updated ${stamp} UTC`,
+      live: true,
+    };
+  } catch (err) {
+    if (typeof console !== "undefined") console.warn("[Aurora] fetchSolar failed:", err?.message || err);
+    return { ...MOCK, live: false };
+  }
 }
 
 // ── THEME ──────────────────────────────────────────────────────────────────
@@ -181,7 +201,7 @@ const rk = {
 
 // ── ICON & LABEL MAPS ─────────────────────────────────────────────────────
 const CONDITION_ICONS = {
-  brain: Brain, heart: Heart, smile: SmilePlus, bone: Bone, moon: Moon, battery: BatteryLow,
+  brain: Brain, heart: Heart, smile: SmilePlus, bone: Bone, moon: Moon, battery: BatteryLow, neuro: Zap,
 };
 
 const RISK_LABELS = { low: "All clear", moderate: "Caution", high: "Alert" };
@@ -251,6 +271,17 @@ const CSS = `
 .tab-btn[aria-selected="false"] svg{color:${T.textTertiary}}
 .tab-btn[aria-selected="true"] span{color:${T.green};font-weight:600}
 .tab-btn[aria-selected="false"] span{color:${T.textTertiary}}
+
+.mood-btn{
+  width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.1);
+  background:transparent;font-size:18px;cursor:pointer;transition:all 0.15s;
+  display:flex;align-items:center;justify-content:center;
+}
+.mood-btn[data-active="true"]{border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.12)}
+.mood-btn:hover{border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.04)}
+
+.diary-entry{border-top:1px solid rgba(255,255,255,0.06);padding:14px 0}
+.diary-entry:first-child{border-top:none}
 
 .badge-count{
   position:absolute;top:2px;right:calc(50% - 22px);background:${T.red};color:#fff;border-radius:10px;
@@ -533,6 +564,14 @@ export default function AuroraHealth() {
   const [tab, setTab] = useState("dashboard");
   const [expanded, setExpanded] = useState(null);
   const [dismissed, setDismissed] = useState([]);
+  const [diary, setDiary] = useState(() => {
+    try { const s = localStorage.getItem("aurora_diary"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const [diaryInput, setDiaryInput] = useState("");
+  const [diaryMood, setDiaryMood] = useState(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    try { return localStorage.getItem("aurora_notif") === "true"; } catch { return false; }
+  });
   const defaultPrefs = { name: "", conditions: ["Migraines","Heart Health","Mental Health"], sensitivity: "Medium", apiKey: "", onboarded: false };
 
   const [prefs, setPrefs] = useState(() => {
@@ -553,11 +592,43 @@ export default function AuroraHealth() {
     try { localStorage.setItem("aurora_prefs", JSON.stringify(p)); } catch {}
   }, []);
 
+  const saveDiary = useCallback((entries) => {
+    setDiary(entries);
+    try { localStorage.setItem("aurora_diary", JSON.stringify(entries)); } catch {}
+  }, []);
+
+  const deleteDiaryEntry = useCallback((id) => {
+    saveDiary(diary.filter(e => e.id !== id));
+  }, [diary, saveDiary]);
+
+  const toggleNotifications = useCallback(async () => {
+    if (notificationsEnabled) {
+      setNotificationsEnabled(false);
+      try { localStorage.setItem("aurora_notif", "false"); } catch {}
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        setNotificationsEnabled(true);
+        try { localStorage.setItem("aurora_notif", "true"); } catch {}
+        new Notification("Aurora Health", { body: "Notifications enabled! We'll alert you when solar activity changes.", icon: "/Auroralogo.png" });
+      }
+    } catch {}
+  }, [notificationsEnabled]);
+
   const load = useCallback(async () => {
     setBusy(true);
-    const d = await fetchSolar(prefs.apiKey);
+    const d = await fetchSolar();
     setSolar(d); setIsLiveData(!!d.live); setLoading(false); setBusy(false); setDismissed([]);
-  }, [prefs.apiKey]);
+    // Check if we should notify
+    if (d.live && notificationsEnabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
+      const prevKp = solar?.kpIndex;
+      if (prevKp !== undefined && prevKp <= 4 && d.kpIndex >= 5) {
+        new Notification("Aurora Health — Solar activity rising", { body: "Moderate solar activity detected. Check your tracked conditions.", icon: "/Auroralogo.png" });
+      }
+    }
+  }, []);
 
   useEffect(() => { load(); }, []);
   useEffect(() => { if (mainRef.current) mainRef.current.focus({ preventScroll: true }); }, [tab]);
@@ -568,6 +639,25 @@ export default function AuroraHealth() {
   const highN = risks.filter(r => r.level === "high").length;
   const modN = risks.filter(r => r.level === "moderate").length;
   const overall = highN > 0 ? "high" : modN > 0 ? "moderate" : "low";
+
+  const addDiaryEntry = () => {
+    if (!diaryInput.trim() && !diaryMood) return;
+    const entry = {
+      id: Date.now(),
+      text: diaryInput.trim(),
+      mood: diaryMood,
+      timestamp: new Date().toISOString(),
+      snapshot: solar ? {
+        kpIndex: solar.kpIndex,
+        solarLevel: solarScale(solar.kpIndex).label,
+        conditions: risks.map(r => ({ condition: r.condition, level: r.level })),
+        overall,
+      } : null,
+    };
+    saveDiary([entry, ...diary]);
+    setDiaryInput("");
+    setDiaryMood(null);
+  };
 
   useEffect(() => {
     const id = "aurora-css-v3";
@@ -650,7 +740,7 @@ export default function AuroraHealth() {
   );
 
   // ── MAIN APP ───────────────────────────────────────────────────────────
-  const TABS = [{ id: "dashboard", label: "Today", Icon: Sun }, { id: "alerts", label: "Alerts", Icon: AlertTriangle }, { id: "learn", label: "Learn", Icon: BookOpen }, { id: "settings", label: "Settings", Icon: Settings }];
+  const TABS = [{ id: "dashboard", label: "Today", Icon: Sun }, { id: "alerts", label: "Alerts", Icon: AlertTriangle }, { id: "diary", label: "Diary", Icon: NotebookPen }, { id: "learn", label: "Learn", Icon: BookOpen }, { id: "settings", label: "Settings", Icon: Settings }];
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg, fontFamily: font, color: T.text, maxWidth: 480, margin: "0 auto", position: "relative" }}>
@@ -679,7 +769,7 @@ export default function AuroraHealth() {
 
       {/* CONTENT */}
       <main id="main" ref={mainRef} tabIndex={-1} style={{ padding: "16px 16px 100px", position: "relative", zIndex: 1, outline: "none" }}
-        aria-label={tab === "dashboard" ? "Today's solar health" : tab === "alerts" ? "Health alerts" : tab === "learn" ? "The science" : "Settings"}>
+        aria-label={tab === "dashboard" ? "Today's solar health" : tab === "alerts" ? "Health alerts" : tab === "diary" ? "Your diary" : tab === "learn" ? "The science" : "Settings"}>
 
         {loading ? (
           <div style={{ textAlign: "center", padding: "80px 0" }} role="status">
@@ -693,7 +783,7 @@ export default function AuroraHealth() {
               <div style={{ marginBottom: 18 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <p style={{ fontSize: 13, color: T.textTertiary, fontWeight: 400, margin: 0 }}>{today}</p>
-                  {!isLiveData && !prefs.apiKey && <span style={{ fontSize: 10, fontWeight: 600, color: T.amber, background: T.amberSoft, border: "1px solid " + T.amberBorder, borderRadius: 6, padding: "2px 8px" }}>Sample data</span>}
+                  {!isLiveData && <span style={{ fontSize: 10, fontWeight: 600, color: T.amber, background: T.amberSoft, border: "1px solid " + T.amberBorder, borderRadius: 6, padding: "2px 8px" }}>Sample data</span>}
                 </div>
                 <h1 style={{ fontSize: 20, fontWeight: 600, color: T.text, margin: "2px 0 0" }}>How space weather may affect you today</h1>
               </div>
@@ -758,6 +848,121 @@ export default function AuroraHealth() {
                   {risks.filter(r => r.level !== "low").sort((a, b) => a.level === "high" ? -1 : 1).map((r, i) =>
                     <div key={r.condition} className="fade-up" style={{ animationDelay: `${i * 0.05}s` }}><AlertCard r={r}/></div>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ════ DIARY ════ */}
+          {tab === "diary" && (
+            <div className="fade-up" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <h1 style={{ fontSize: 20, fontWeight: 600, color: T.text, margin: "0 0 4px" }}>Your diary</h1>
+                <p style={{ fontSize: 13, color: T.textSecondary, margin: 0, fontWeight: 400 }}>Track how you feel — each entry captures today's solar conditions automatically.</p>
+              </div>
+
+              {/* New entry */}
+              <div className="m-card" style={{ boxShadow: T.elevation2 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <Plus size={16} color={T.green} strokeWidth={1.8}/>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: T.green }}>New entry</span>
+                  {solar && (
+                    <span style={{ marginLeft: "auto", fontSize: 10, color: T.textTertiary, display: "flex", alignItems: "center", gap: 4 }}>
+                      <Camera size={10} strokeWidth={1.8}/> Solar snapshot will be saved
+                    </span>
+                  )}
+                </div>
+
+                {/* Mood selector */}
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: T.textTertiary, fontWeight: 500, marginBottom: 8 }}>How are you feeling?</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {[
+                      { emoji: "😊", label: "Good" },
+                      { emoji: "😐", label: "Okay" },
+                      { emoji: "😔", label: "Low" },
+                      { emoji: "😫", label: "Rough" },
+                      { emoji: "🤕", label: "Unwell" },
+                    ].map(m => (
+                      <button key={m.label} className="mood-btn" data-active={String(diaryMood === m.label)}
+                        onClick={() => setDiaryMood(diaryMood === m.label ? null : m.label)}
+                        aria-label={m.label} title={m.label}>
+                        {m.emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <textarea
+                  className="m-input"
+                  value={diaryInput}
+                  onChange={e => setDiaryInput(e.target.value)}
+                  placeholder="How are you feeling today? Any symptoms, changes, or things you've noticed..."
+                  rows={3}
+                  style={{ resize: "vertical", minHeight: 72, fontFamily: font, lineHeight: 1.55 }}
+                />
+                <button
+                  className="btn-filled"
+                  style={{ background: T.green, color: "#000", marginTop: 10 }}
+                  onClick={addDiaryEntry}
+                  disabled={!diaryInput.trim() && !diaryMood}
+                >
+                  Save entry
+                </button>
+              </div>
+
+              {/* Entries list */}
+              {diary.length === 0 ? (
+                <div className="m-card" style={{ textAlign: "center", padding: "32px 16px" }}>
+                  <NotebookPen size={32} color={T.textTertiary} strokeWidth={1.2} style={{ margin: "0 auto 10px", display: "block" }}/>
+                  <div style={{ fontSize: 14, color: T.textSecondary, fontWeight: 500, marginBottom: 4 }}>No entries yet</div>
+                  <div style={{ fontSize: 13, color: T.textTertiary, fontWeight: 400 }}>Start tracking how you feel — over time you'll see patterns with solar activity.</div>
+                </div>
+              ) : (
+                <div>
+                  <div className="section-title">Past entries</div>
+                  <div className="m-card" style={{ padding: "2px 16px" }}>
+                    {diary.map((entry) => {
+                      const d = new Date(entry.timestamp);
+                      const dateStr = d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
+                      const timeStr = d.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+                      return (
+                        <div key={entry.id} className="diary-entry">
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              {entry.mood && <span style={{ fontSize: 16 }}>{
+                                { Good: "😊", Okay: "😐", Low: "😔", Rough: "😫", Unwell: "🤕" }[entry.mood]
+                              }</span>}
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{dateStr}</div>
+                                <div style={{ fontSize: 11, color: T.textTertiary }}>{timeStr}</div>
+                              </div>
+                            </div>
+                            <button onClick={() => deleteDiaryEntry(entry.id)} aria-label="Delete entry"
+                              style={{ background: "none", border: "none", color: T.textTertiary, cursor: "pointer", padding: 4, borderRadius: 4 }}>
+                              <Trash2 size={14} strokeWidth={1.8}/>
+                            </button>
+                          </div>
+                          {entry.text && <p style={{ fontSize: 13, color: T.textSecondary, margin: "0 0 8px", lineHeight: 1.6 }}>{entry.text}</p>}
+                          {entry.snapshot && (
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                              <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, background: T.surface2, color: T.textTertiary, display: "flex", alignItems: "center", gap: 4 }}>
+                                <Activity size={10} strokeWidth={1.8}/> Solar: {entry.snapshot.solarLevel}
+                              </span>
+                              {entry.snapshot.conditions.filter(c => c.level !== "low").map(c => (
+                                <span key={c.condition} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, background: rk[c.level].bg, color: rk[c.level].text, border: "1px solid " + rk[c.level].border }}>
+                                  {c.condition}: {RISK_LABELS[c.level]}
+                                </span>
+                              ))}
+                              {entry.snapshot.conditions.every(c => c.level === "low") && (
+                                <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, background: rk.low.bg, color: rk.low.text, border: "1px solid " + rk.low.border }}>All clear</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -921,9 +1126,46 @@ export default function AuroraHealth() {
               <section aria-labelledby="s-api">
                 <h2 id="s-api" className="section-title">Data source</h2>
                 <div className="m-card">
-                  <label htmlFor="s-key" style={{ display: "block", fontSize: 12, color: T.green, fontWeight: 500, marginBottom: 4 }}>SWS API key (optional)</label>
-                  <p id="s-key-desc" style={{ fontSize: 12, color: T.textTertiary, margin: "0 0 10px", lineHeight: 1.5, fontWeight: 400 }}>Add your free Bureau of Meteorology Space Weather API key to get live solar data. <a href="https://sws-data.sws.bom.gov.au/register" target="_blank" rel="noopener noreferrer" style={{ color: T.purple, textDecoration: "none", fontWeight: 500 }}>Register here</a> — it's free and instant.</p>
-                  <input id="s-key" type="password" className="m-input" value={prefs.apiKey || ""} onChange={e => save({ ...prefs, apiKey: e.target.value })} placeholder="Your SWS API key" aria-describedby="s-key-desc" autoComplete="off"/>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <Activity size={16} color={T.green} strokeWidth={1.8} style={{ flexShrink: 0, marginTop: 2 }}/>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: T.text, marginBottom: 2 }}>NOAA SWPC — planetary Kp</div>
+                      <p style={{ fontSize: 12, color: T.textTertiary, margin: 0, lineHeight: 1.5, fontWeight: 400 }}>Live data is pulled from the US National Oceanic and Atmospheric Administration's Space Weather Prediction Center. No sign-up or API key needed — it just works.</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section aria-labelledby="s-notif">
+                <h2 id="s-notif" className="section-title">Notifications</h2>
+                <div className="m-card">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      {notificationsEnabled ? <Bell size={18} color={T.green} strokeWidth={1.8}/> : <BellOff size={18} color={T.textTertiary} strokeWidth={1.8}/>}
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: T.text }}>Push notifications</div>
+                        <div style={{ fontSize: 12, color: T.textTertiary, fontWeight: 400 }}>Get alerted when solar activity changes</div>
+                      </div>
+                    </div>
+                    <button onClick={toggleNotifications} style={{
+                      width: 44, height: 26, borderRadius: 13, border: "none", cursor: "pointer",
+                      background: notificationsEnabled ? T.green : T.surface3,
+                      position: "relative", transition: "background 0.2s",
+                    }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: "50%", background: "#fff",
+                        position: "absolute", top: 3,
+                        left: notificationsEnabled ? 21 : 3,
+                        transition: "left 0.2s",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                      }}/>
+                    </button>
+                  </div>
+                  {notificationsEnabled && (
+                    <p style={{ fontSize: 12, color: T.textTertiary, margin: "10px 0 0", lineHeight: 1.5, fontWeight: 400 }}>
+                      You'll receive a notification when solar activity rises to moderate or higher levels.
+                    </p>
+                  )}
                 </div>
               </section>
 
@@ -957,3 +1199,6 @@ export default function AuroraHealth() {
     </div>
   );
 }
+
+
+

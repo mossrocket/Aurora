@@ -2,60 +2,7 @@
 
 **Your personal solar health companion** — translating space weather into clear, actionable health insights.
 
-Aurora Health monitors geomagnetic activity (Kp index, A-index, Dst) and shows how solar weather may affect conditions like migraines, heart health, mental health, joint pain, sleep quality, and fatigue.
-
-## Quick start
-
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser.
-
-## Build for production
-
-```bash
-npm run build
-npm run preview   # preview the production build locally
-```
-
-The `dist/` folder contains the deployable PWA.
-
-## Deploy (get a shareable link)
-
-### Option A: Vercel (recommended — free, fast)
-
-1. Push this repo to GitHub
-2. Go to [vercel.com](https://vercel.com), sign in with GitHub
-3. Click **Import Project** → select `AuroraHealth`
-4. Framework preset: **Vite** (should auto-detect)
-5. Click **Deploy**
-
-You'll get a URL like `aurora-health.vercel.app` — shareable immediately.
-
-### Option B: Netlify (also free)
-
-1. Push to GitHub
-2. Go to [netlify.com](https://netlify.com), sign in with GitHub
-3. **New site from Git** → select `AuroraHealth`
-4. Build command: `npm run build`
-5. Publish directory: `dist`
-6. Click **Deploy**
-
-### Option C: GitHub Pages
-
-```bash
-npm run build
-# deploy dist/ folder to gh-pages branch
-npx gh-pages -d dist
-```
-
-Then enable Pages in your repo settings.
-
-## Custom domain
-
-Once deployed on Vercel or Netlify, you can add a custom domain (e.g. `aurorahealth.app`) through their dashboard. Both support free SSL.
+Aurora Health monitors the planetary Kp index and 24-hour a-index, and shows how solar weather may affect conditions like migraines, heart health, mental health, joint pain, sleep quality, fatigue, and other neurological sensitivities.
 
 ## PWA — installable on phones
 
@@ -67,28 +14,19 @@ It will appear as a standalone app with your Aurora logo, dark splash screen, an
 
 ## Live solar data
 
-By default, the app uses sample data. To connect live data from the Australian Bureau of Meteorology Space Weather Services:
+Live data is pulled from the US **NOAA Space Weather Prediction Center (SWPC)**. No sign-up, no API key, no configuration — it just works on first load. The app fetches:
 
-1. Request an API key at [sws.bom.gov.au](https://sws.bom.gov.au)
-2. Enter it in Settings → Data Source within the app
+- **Planetary Kp** (estimated, updated every 3 hours) — `/api/noaa/get-kp-index`
+- **Running a-index** (24-hour equivalent amplitude) — `/api/noaa/get-ap-index`
+- **3-day Kp forecast** (planned UI integration) — `/api/noaa/get-kp-forecast`
 
-> **Note:** The SWS API requires a proxy to avoid CORS issues in the browser. For production, set up a simple API route (e.g. on Vercel serverless functions) that proxies requests to `https://sws-data.sws.bom.gov.au/`.
+If the upstream is unreachable, the app falls back to sample data and shows a "Sample data" badge on the dashboard so you know you're not looking at live values.
 
-## Roadmap to app stores
+### Why NOAA rather than BOM?
 
-### Google Play (via Trusted Web Activity)
+Earlier versions used the Australian Bureau of Meteorology Space Weather Services API. BOM's feed returns the **Australian regional K index** (locally called Kaus), not the global planetary Kp — they're related but different measurements, and Kaus typically runs 1–2 points below planetary Kp. Since Aurora Health's health-correlation content is based on planetary-Kp literature, NOAA is the correct source regardless of where the user is. NOAA also requires no API key, which removes an entire class of key-leak and rotation concerns.
 
-Once the PWA is live with a custom domain + SSL:
-1. Use [Bubblewrap](https://github.com/nicothin/nicothin/nicothin/nicothin/nicothin) or [PWABuilder.com](https://pwabuilder.com) to wrap the PWA
-2. Upload the generated `.aab` to Google Play Console
-3. Cost: A$35 one-time developer registration
-
-### Apple App Store (via Capacitor)
-
-1. Install Capacitor: `npm install @capacitor/core @capacitor/ios`
-2. `npx cap init` → `npx cap add ios`
-3. Build and open in Xcode: `npm run build && npx cap sync && npx cap open ios`
-4. Cost: A$149/year Apple Developer Program
+The legacy `api/sws/*` handlers remain in the repo for reference but are no longer called.
 
 ## Tech stack
 
@@ -97,6 +35,10 @@ Once the PWA is live with a custom domain + SSL:
 - **DM Sans** — clean, modern typography
 - **vite-plugin-pwa** — service worker + manifest generation
 - **WCAG AA compliant** — all text passes 4.5:1 contrast ratio
+
+## Medical disclaimer
+
+Aurora Health is for informational purposes only. It surfaces correlational research between geomagnetic activity and health, and does **not** provide medical advice, diagnosis, or treatment. Always consult a qualified health professional for health decisions.
 
 ## License
 
