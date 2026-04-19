@@ -761,7 +761,7 @@ export default function AuroraHealth() {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <RiskBadge level={overall}/>
           <button onClick={load} disabled={busy} aria-label="Refresh solar data"
-            style={{ width: 36, height: 36, borderRadius: T.radiusSm, background: T.surface1, border: `1px solid ${T.border}`, color: busy ? T.green : T.textSecondary, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: busy ? "spin 0.8s linear infinite" : "none" }}>
+            style={{ width: 36, height: 36, borderRadius: T.radiusSm, background: busy ? T.greenSoft : T.surface1, border: `1px solid ${busy ? T.greenBorder : T.border}`, color: busy ? T.green : T.textSecondary, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: busy ? "spin 2s linear infinite" : "none", transition: "background 0.2s, border-color 0.2s, color 0.2s" }}>
             <RefreshCw size={16} strokeWidth={1.8} />
           </button>
         </div>
@@ -781,12 +781,25 @@ export default function AuroraHealth() {
           {tab === "dashboard" && solar && (
             <div className="fade-up">
               <div style={{ marginBottom: 18 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <p style={{ fontSize: 13, color: T.textTertiary, fontWeight: 400, margin: 0 }}>{today}</p>
-                  {!isLiveData && <span style={{ fontSize: 10, fontWeight: 600, color: T.amber, background: T.amberSoft, border: "1px solid " + T.amberBorder, borderRadius: 6, padding: "2px 8px" }}>Sample data</span>}
-                </div>
+                <p style={{ fontSize: 13, color: T.textTertiary, fontWeight: 400, margin: 0 }}>{today}</p>
                 <h1 style={{ fontSize: 20, fontWeight: 600, color: T.text, margin: "2px 0 0" }}>How space weather may affect you today</h1>
               </div>
+
+              {/* LIVE DATA UNAVAILABLE BANNER */}
+              {!isLiveData && (
+                <div className="m-card fade-up" style={{ background: T.amberSoft, borderColor: T.amberBorder, display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 20 }}>
+                  <Info size={18} color={T.amber} strokeWidth={1.8} style={{ flexShrink: 0, marginTop: 1 }}/>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: T.amber, marginBottom: 3 }}>Live data unavailable</div>
+                    <p style={{ fontSize: 12, color: T.textSecondary, margin: "0 0 8px", lineHeight: 1.55 }}>
+                      Aurora couldn't reach NOAA's space weather service. Insights shown are based on typical moderate solar activity and may not reflect current conditions.
+                    </p>
+                    <button onClick={load} disabled={busy} style={{ fontSize: 12, fontWeight: 600, color: T.amber, background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline", fontFamily: font }}>
+                      Try again
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* 1 — ALERTS */}
               {alerts.length > 0 && (
@@ -984,7 +997,7 @@ export default function AuroraHealth() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                     <Activity size={16} color={T.green} strokeWidth={1.8}/>
                     <span style={{ fontSize: 13, fontWeight: 600, color: T.green }}>Live space weather data</span>
-                    {isLiveData && <span style={{ fontSize: 10, color: T.textTertiary, fontWeight: 400, marginLeft: "auto" }}>via Bureau of Meteorology</span>}
+                    {isLiveData && <span style={{ fontSize: 10, color: T.textTertiary, fontWeight: 400, marginLeft: "auto" }}>via NOAA SWPC</span>}
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
@@ -1016,6 +1029,17 @@ export default function AuroraHealth() {
                   </div>
                 </section>
               )}
+
+              {/* DATA SOURCE */}
+              <div className="m-card" style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                <Activity size={16} color={T.green} strokeWidth={1.8} style={{ flexShrink: 0, marginTop: 2 }}/>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: T.text, marginBottom: 3 }}>Data source: NOAA SWPC</div>
+                  <p style={{ fontSize: 12, color: T.textTertiary, margin: 0, lineHeight: 1.55, fontWeight: 400 }}>
+                    Live data is pulled from the US National Oceanic and Atmospheric Administration's Space Weather Prediction Center — the world's authoritative source for space weather monitoring. No sign-up or API key needed.
+                  </p>
+                </div>
+              </div>
 
               <LearnCard
                 title="What is a geomagnetic storm?"
@@ -1123,19 +1147,6 @@ export default function AuroraHealth() {
                 </div>
               </section>
 
-              <section aria-labelledby="s-api">
-                <h2 id="s-api" className="section-title">Data source</h2>
-                <div className="m-card">
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <Activity size={16} color={T.green} strokeWidth={1.8} style={{ flexShrink: 0, marginTop: 2 }}/>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: T.text, marginBottom: 2 }}>NOAA SWPC — planetary Kp</div>
-                      <p style={{ fontSize: 12, color: T.textTertiary, margin: 0, lineHeight: 1.5, fontWeight: 400 }}>Live data is pulled from the US National Oceanic and Atmospheric Administration's Space Weather Prediction Center. No sign-up or API key needed — it just works.</p>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
               <section aria-labelledby="s-notif">
                 <h2 id="s-notif" className="section-title">Notifications</h2>
                 <div className="m-card">
@@ -1199,6 +1210,10 @@ export default function AuroraHealth() {
     </div>
   );
 }
+
+
+
+
 
 
 
