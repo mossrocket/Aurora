@@ -1,6 +1,6 @@
 # Aurora Space Health ☀️
 
-AuroraSpace.health
+https://AuroraSpace.health
 
 Sync Your Wellbeing with the Cosmos.
 
