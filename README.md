@@ -1,16 +1,16 @@
-# Aurora Health ☀️
+# Aurora Space Health ☀️
 
-**Your personal solar health companion** — translating space weather into clear, actionable health insights.
+AuroraSpace.health
 
-Aurora Health monitors the planetary Kp index and 24-hour a-index, and shows how solar weather may affect conditions like migraines, heart health, mental health, joint pain, sleep quality, fatigue, and other neurological sensitivities.
+Sync Your Wellbeing with the Cosmos.
 
-## PWA — installable on phones
+Do you ever feel "off" for no clear reason? Your body might be reacting to the world beyond our atmosphere. Aurora Space Health is the first wellness companion that connects live space weather data from NOAA directly to your personal health. By tracking the Earth's geomagnetic activity (Kp-index), Aurora helps you identify hidden environmental triggers for migraines, heart health, and sleep quality.
 
-This is a Progressive Web App. When users visit the link on mobile:
-- **Android**: Chrome shows an "Add to Home Screen" prompt automatically
-- **iOS**: Tap Share → "Add to Home Screen"
-
-It will appear as a standalone app with your Aurora logo, dark splash screen, and no browser chrome.
+## Key Features:
+- **Live NOAA Integration**: Real-time tracking of the Kp-index and A-index—the gold standards for measuring disturbances in Earth's magnetic field.
+- **Personalized Alerts**: Receive "Caution" notifications when solar activity peaks, specifically tailored to your sensitivity for migraines, joint pain, or fatigue.
+- **Evidence-Based Insights**: Built on heliobiology research linking geomagnetic storms to shifts in heart rate variability (HRV) and circadian rhythms.
+- **Privacy-First Diary**: Track your daily symptoms alongside cosmic shifts to discover your own "Space Weather Sensitivity."
 
 ## Live solar data
 
@@ -22,12 +22,6 @@ Live data is pulled from the US **NOAA Space Weather Prediction Center (SWPC)**.
 
 If the upstream is unreachable, the app falls back to sample data and shows a "Sample data" badge on the dashboard so you know you're not looking at live values.
 
-### Why NOAA rather than BOM?
-
-Earlier versions used the Australian Bureau of Meteorology Space Weather Services API. BOM's feed returns the **Australian regional K index** (locally called Kaus), not the global planetary Kp — they're related but different measurements, and Kaus typically runs 1–2 points below planetary Kp. Since Aurora Health's health-correlation content is based on planetary-Kp literature, NOAA is the correct source regardless of where the user is. NOAA also requires no API key, which removes an entire class of key-leak and rotation concerns.
-
-The legacy `api/sws/*` handlers remain in the repo for reference but are no longer called.
-
 ## Tech stack
 
 - **React 18** + **Vite 5** — fast dev and build
@@ -38,8 +32,12 @@ The legacy `api/sws/*` handlers remain in the repo for reference but are no long
 
 ## Medical disclaimer
 
-Aurora Health is for informational purposes only. It surfaces correlational research between geomagnetic activity and health, and does **not** provide medical advice, diagnosis, or treatment. Always consult a qualified health professional for health decisions.
+Aurora Space Health is for informational purposes only. It surfaces correlational research between geomagnetic activity and health, and does **not** provide medical advice, diagnosis, or treatment. Always consult a qualified health professional for health decisions.
 
 ## License
 
-MIT
+Copyright Peter Alan Gray 2026 
+ALL RIGHTS RESERVED
+
+Buy me a coffee? 
+https://buymeacoffee.com/aurorahealth
