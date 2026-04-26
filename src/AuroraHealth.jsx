@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Brain, Heart, SmilePlus, Bone, Moon, BatteryLow, ChevronDown, Check, RefreshCw, Sun, AlertTriangle, Settings, CircleCheckBig, Sparkles, BookOpen, ExternalLink, Info, ShieldAlert, Activity, Gauge, Zap, Bell, BellOff, NotebookPen, Plus, Calendar, Trash2, Camera } from "lucide-react";
+import { Brain, Heart, SmilePlus, Bone, Moon, BatteryLow, ChevronDown, Check, RefreshCw, Sun, Settings, CircleCheckBig, Sparkles, BookOpen, ExternalLink, Info, ShieldAlert, Activity, Gauge, Zap, Bell, BellOff, NotebookPen, Plus, Calendar, Trash2, Camera } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    AURORA HEALTH v3.0
@@ -459,27 +459,34 @@ function ForecastStrip({ days }) {
   );
 }
 
-function AlertCard({ r, onDismiss }) {
-  const c = rk[r.level];
+function DashboardHero({ kp, name, risks, today }) {
+  const scale = solarScale(kp);
+  const highN = risks.filter(r => r.level === "high").length;
+  const modN = risks.filter(r => r.level === "moderate").length;
+  const greeting = highN > 0
+    ? `Take it easy today, ${name}`
+    : modN > 0
+    ? `Stay mindful today, ${name}`
+    : `All clear, ${name}`;
   return (
-    <article className="m-card fade-up" role="alert" aria-label={`${r.level} alert for ${r.condition}`}
-      style={{ background: c.bg, borderColor: c.border, display: "flex", gap: 12, alignItems: "flex-start" }}>
-      <AlertTriangle size={20} color={rk[r.level].text} strokeWidth={1.8} style={{ flexShrink: 0, marginTop: 1 }} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{r.condition}</span>
-          <RiskBadge level={r.level}/>
-        </div>
-        <p style={{ fontSize: 13, color: T.textSecondary, margin: "0 0 8px", lineHeight: 1.55 }}>{r.desc}</p>
-        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: T.radiusXs, padding: "9px 12px" }}>
-          <p style={{ fontSize: 13, color: c.text, margin: 0, fontWeight: 500, lineHeight: 1.5 }}>💡 {r.tip}</p>
+    <div className="m-card fade-up" style={{
+      background: `linear-gradient(135deg, ${scale.color}18 0%, transparent 65%)`,
+      borderColor: scale.color + "44",
+      padding: "18px 20px",
+      marginBottom: 20,
+      boxShadow: T.elevation2,
+    }}>
+      <p style={{ fontSize: 12, color: T.textTertiary, fontWeight: 400, margin: "0 0 12px" }}>{today}</p>
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <KpGauge value={kp} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 17, fontWeight: 600, color: T.text, marginBottom: 5, lineHeight: 1.3 }}>{greeting}</div>
+          <p style={{ fontSize: 13, color: T.textSecondary, margin: 0, lineHeight: 1.55, fontWeight: 400 }}>
+            {overallMsg(kp)}
+          </p>
         </div>
       </div>
-      {onDismiss && (
-        <button onClick={e => { e.stopPropagation(); onDismiss(); }} aria-label={`Dismiss ${r.condition} alert`}
-          style={{ background: "none", border: "none", color: "rgba(255,255,255,0.2)", fontSize: 20, cursor: "pointer", padding: 4, lineHeight: 1, flexShrink: 0, borderRadius: 6 }}>×</button>
-      )}
-    </article>
+    </div>
   );
 }
 
@@ -487,11 +494,11 @@ function HealthCard({ r, open, onToggle }) {
   const c = rk[r.level];
   const pid = `hp-${r.slug}`, hid = `hh-${r.slug}`;
   return (
-    <div className="m-card m-card-interactive" style={{ borderColor: open ? c.border : undefined, boxShadow: open ? T.elevation2 : T.elevation1 }}>
+    <div className="m-card m-card-interactive" style={{ borderColor: open ? c.border : undefined, boxShadow: open ? T.elevation2 : T.elevation1, paddingLeft: 14, borderLeft: `3px solid ${c.dot}` }}>
       <button id={hid} onClick={onToggle} aria-expanded={open} aria-controls={pid}
         style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", padding: 0, fontFamily: font }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <CondIcon icon={r.icon} size={20} color={rk[r.level].text} />
+          <CondIcon icon={r.icon} size={20} color={c.dot} />
           <span style={{ fontSize: 14, fontWeight: 500, color: T.text }}>{r.condition}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -626,7 +633,6 @@ export default function AuroraHealth() {
   const [isLiveData, setIsLiveData] = useState(false);
   const [tab, setTab] = useState("dashboard");
   const [expanded, setExpanded] = useState(null);
-  const [dismissed, setDismissed] = useState([]);
   const [diary, setDiary] = useState(() => {
     try { const s = localStorage.getItem("aurora_diary"); return s ? JSON.parse(s) : []; } catch { return []; }
   });
@@ -683,7 +689,7 @@ export default function AuroraHealth() {
   const load = useCallback(async () => {
     setBusy(true);
     const [d, fc] = await Promise.all([fetchSolar(), fetchForecast()]);
-    setSolar(d); setForecast(fc); setIsLiveData(!!d.live); setLoading(false); setBusy(false); setDismissed([]);
+    setSolar(d); setForecast(fc); setIsLiveData(!!d.live); setLoading(false); setBusy(false);
     // Check if we should notify
     if (d.live && notificationsEnabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
       const prevKp = solar?.kpIndex;
@@ -698,7 +704,6 @@ export default function AuroraHealth() {
   useEffect(() => { if (!prefs.onboarded && step === 1 && nameRef.current) nameRef.current.focus(); }, [prefs.onboarded, step]);
 
   const risks = solar ? prefs.conditions.map(c => getRisk(c, solar.kpIndex, prefs.sensitivity)).filter(Boolean) : [];
-  const alerts = risks.filter(r => r.level !== "low" && !dismissed.includes(r.condition));
   const highN = risks.filter(r => r.level === "high").length;
   const modN = risks.filter(r => r.level === "moderate").length;
   const overall = highN > 0 ? "high" : modN > 0 ? "moderate" : "low";
@@ -803,7 +808,7 @@ export default function AuroraHealth() {
   );
 
   // ── MAIN APP ───────────────────────────────────────────────────────────
-  const TABS = [{ id: "dashboard", label: "Today", Icon: Sun }, { id: "alerts", label: "Alerts", Icon: AlertTriangle }, { id: "diary", label: "Diary", Icon: NotebookPen }, { id: "learn", label: "Learn", Icon: BookOpen }, { id: "settings", label: "Settings", Icon: Settings }];
+  const TABS = [{ id: "dashboard", label: "Today", Icon: Sun }, { id: "diary", label: "Diary", Icon: NotebookPen }, { id: "learn", label: "Learn", Icon: BookOpen }, { id: "settings", label: "Settings", Icon: Settings }];
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg, fontFamily: font, color: T.text, maxWidth: 480, margin: "0 auto", position: "relative" }}>
@@ -832,7 +837,7 @@ export default function AuroraHealth() {
 
       {/* CONTENT */}
       <main id="main" ref={mainRef} tabIndex={-1} style={{ padding: "16px 16px 100px", position: "relative", zIndex: 1, outline: "none" }}
-        aria-label={tab === "dashboard" ? "Today's solar health" : tab === "alerts" ? "Health alerts" : tab === "diary" ? "Your diary" : tab === "learn" ? "The science" : "Settings"}>
+        aria-label={tab === "dashboard" ? "Today's solar health" : tab === "diary" ? "Your diary" : tab === "learn" ? "The science" : "Settings"}>
 
         {loading ? (
           <div style={{ textAlign: "center", padding: "80px 0" }} role="status">
@@ -843,14 +848,13 @@ export default function AuroraHealth() {
           {/* ════ DASHBOARD ════ */}
           {tab === "dashboard" && solar && (
             <div className="fade-up">
-              <div style={{ marginBottom: 18 }}>
-                <p style={{ fontSize: 13, color: T.textTertiary, fontWeight: 400, margin: 0 }}>{today}</p>
-                <h1 style={{ fontSize: 20, fontWeight: 600, color: T.text, margin: "2px 0 0" }}>How space weather may affect you today</h1>
-              </div>
+
+              {/* 1 — HERO */}
+              <DashboardHero kp={solar.kpIndex} name={prefs.name || "Explorer"} risks={risks} today={today} />
 
               {/* LIVE DATA UNAVAILABLE BANNER */}
               {!isLiveData && (
-                <div className="m-card fade-up" style={{ background: T.amberSoft, borderColor: T.amberBorder, display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 20 }}>
+                <div className="m-card fade-up" style={{ background: T.amberSoft, borderColor: T.amberBorder, display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 16 }}>
                   <Info size={18} color={T.amber} strokeWidth={1.8} style={{ flexShrink: 0, marginTop: 1 }}/>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: T.amber, marginBottom: 3 }}>Live data unavailable</div>
@@ -864,24 +868,22 @@ export default function AuroraHealth() {
                 </div>
               )}
 
-              {/* 1 — ALERT SUMMARY BANNER */}
-              {alerts.length > 0 && (
-                <button onClick={() => setTab("alerts")} aria-label={`${alerts.length} active alert${alerts.length > 1 ? "s" : ""} — view Alerts tab`}
-                  style={{ width: "100%", background: T.redSoft, border: `1px solid ${T.redBorder}`, borderRadius: T.radiusSm, padding: "11px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", fontFamily: font }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <AlertTriangle size={16} color={T.red} strokeWidth={1.8} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>
-                      {alerts.length} condition{alerts.length > 1 ? "s" : ""} elevated
-                    </span>
-                    <div style={{ display: "flex", gap: 4 }}>
-                      {[...new Set(alerts.map(r => r.level))].map(lvl => <RiskBadge key={lvl} level={lvl} />)}
+              {/* 2 — TODAY'S PRIORITY (only when elevated) */}
+              {(() => {
+                const top = risks.find(r => r.level === "high") || risks.find(r => r.level === "moderate");
+                if (!top) return null;
+                const c = rk[top.level];
+                return (
+                  <div className="m-card fade-up" style={{ background: c.bg, borderColor: c.border, marginBottom: 16 }} aria-label="Today's priority action">
+                    <div style={{ fontSize: 10, color: c.text, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
+                      Today's priority · {top.condition}
                     </div>
+                    <p style={{ fontSize: 14, color: T.text, margin: 0, lineHeight: 1.6, fontWeight: 500 }}>{top.tip}</p>
                   </div>
-                  <ChevronDown size={16} color={T.textTertiary} strokeWidth={2} style={{ transform: "rotate(-90deg)", flexShrink: 0 }} />
-                </button>
-              )}
+                );
+              })()}
 
-              {/* 2 — HEALTH CONDITIONS */}
+              {/* 3 — HEALTH CONDITIONS */}
               <section aria-label="Health conditions" style={{ marginBottom: 20 }}>
                 <div className="section-title">Conditions you're tracking</div>
                 {risks.length > 0 && risks.every(r => r.level === "low") ? (
@@ -916,26 +918,6 @@ export default function AuroraHealth() {
               <div style={{ marginTop: 12 }}>
                 <Disclaimer/>
               </div>
-            </div>
-          )}
-
-          {/* ════ ALERTS ════ */}
-          {tab === "alerts" && (
-            <div className="fade-up">
-              <div className="section-title">All health alerts</div>
-              {risks.filter(r => r.level !== "low").length === 0 ? (
-                <div style={{ textAlign: "center", padding: "56px 0" }} role="status">
-                  <CircleCheckBig size={44} color={T.green} strokeWidth={1.5} style={{ margin: "0 auto 12px", display: "block" }} />
-                  <div style={{ fontSize: 16, color: T.textSecondary, fontWeight: 500, marginBottom: 4 }}>All clear</div>
-                  <div style={{ fontSize: 13, color: T.textTertiary, fontWeight: 400 }}>All your conditions are at low risk today</div>
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {risks.filter(r => r.level !== "low").sort((a, b) => a.level === "high" ? -1 : 1).map((r, i) =>
-                    <div key={r.condition} className="fade-up" style={{ animationDelay: `${i * 0.05}s` }}><AlertCard r={r}/></div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
@@ -1269,10 +1251,9 @@ export default function AuroraHealth() {
       <nav className="tab-bar" role="tablist" aria-label="Navigation">
         {TABS.map(t => {
           const active = tab === t.id;
-          const n = t.id === "alerts" ? alerts.length : 0;
           return (
             <button key={t.id} className="tab-btn" role="tab" aria-selected={active}
-              aria-label={`${t.label}${n > 0 ? `, ${n} alerts` : ""}`} onClick={() => setTab(t.id)}>
+              aria-label={t.label} onClick={() => setTab(t.id)}>
               <t.Icon size={22} color={active ? T.green : T.textTertiary} strokeWidth={1.8} />
               <span>{t.label}</span>
               {n > 0 && <span className="badge-count" aria-hidden="true">{n}</span>}
