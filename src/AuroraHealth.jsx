@@ -1256,7 +1256,6 @@ export default function AuroraHealth() {
               aria-label={t.label} onClick={() => setTab(t.id)}>
               <t.Icon size={22} color={active ? T.green : T.textTertiary} strokeWidth={1.8} />
               <span>{t.label}</span>
-              {n > 0 && <span className="badge-count" aria-hidden="true">{n}</span>}
             </button>
           );
         })}
