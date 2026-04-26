@@ -158,6 +158,31 @@ async function fetchSolar() {
   }
 }
 
+async function fetchForecast() {
+  try {
+    const res = await fetch("/api/noaa/get-kp-forecast");
+    if (!res.ok) return null;
+    const json = await res.json();
+    const rows = json.data || [];
+    // Group 3-hour slots by calendar date, keep max Kp per day
+    const byDay = {};
+    rows.forEach(r => {
+      const day = (r.valid_time || "").slice(0, 10);
+      if (!day) return;
+      if (byDay[day] === undefined || r.index > byDay[day]) byDay[day] = r.index;
+    });
+    // Return next 3 days sorted ascending (today may be partial — skip it)
+    const today = new Date().toISOString().slice(0, 10);
+    return Object.entries(byDay)
+      .filter(([d]) => d > today)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(0, 3)
+      .map(([date, kp]) => ({ date, kp }));
+  } catch {
+    return null;
+  }
+}
+
 // ── THEME ──────────────────────────────────────────────────────────────────
 const T = {
   bg: "#060b16",
@@ -397,6 +422,43 @@ function SolarActivityBar({ kp }) {
   );
 }
 
+function ForecastStrip({ days }) {
+  if (!days || days.length === 0) return null;
+  return (
+    <section aria-label="3-day solar forecast" className="m-card" style={{ padding: "14px 16px", marginBottom: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: T.textTertiary, marginBottom: 12 }}>3-day outlook</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        {days.map(({ date, kp }) => {
+          const scale = solarScale(kp);
+          const label = new Date(date + "T12:00:00").toLocaleDateString("en-AU", { weekday: "short" });
+          const highN = HEALTH_RULES.filter(r => {
+            const t = r.thresholds.find(th => kp <= th.max) || r.thresholds[3];
+            return t.level === "high";
+          }).length;
+          const modN = HEALTH_RULES.filter(r => {
+            const t = r.thresholds.find(th => kp <= th.max) || r.thresholds[3];
+            return t.level === "moderate";
+          }).length;
+          const impact = highN > 0 ? `${highN} high` : modN > 0 ? `${modN} caution` : "All clear";
+          const impactColor = highN > 0 ? T.red : modN > 0 ? T.amber : T.green;
+          return (
+            <div key={date} style={{
+              flex: 1, background: T.surface1, border: `1px solid ${T.border}`,
+              borderRadius: T.radiusSm, padding: "10px 8px", textAlign: "center",
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: T.textTertiary, marginBottom: 6, letterSpacing: "0.04em" }}>{label}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: scale.color, lineHeight: 1, marginBottom: 2 }}>{kp}</div>
+              <div style={{ fontSize: 9, color: T.textTertiary, marginBottom: 6, letterSpacing: "0.08em", textTransform: "uppercase" }}>Kp</div>
+              <div style={{ fontSize: 10, color: scale.color, fontWeight: 600, marginBottom: 4 }}>{scale.label}</div>
+              <div style={{ fontSize: 10, color: impactColor, fontWeight: 500 }}>{impact}</div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function AlertCard({ r, onDismiss }) {
   const c = rk[r.level];
   return (
@@ -484,7 +546,7 @@ function Disclaimer() {
     }}>
       <ShieldAlert size={16} color={T.textTertiary} strokeWidth={1.8} style={{ flexShrink: 0, marginTop: 1 }}/>
       <p style={{ fontSize: 11, color: T.textTertiary, margin: 0, lineHeight: 1.55, fontWeight: 400 }}>
-        Aurora Health is for informational purposes only and does not provide medical advice, diagnosis, or treatment. Always consult a qualified health professional about any concerns.
+        Aurora Space Health is for informational purposes only and does not provide medical advice, diagnosis, or treatment. Always consult a qualified health professional about any concerns.
       </p>
     </div>
   );
@@ -505,7 +567,7 @@ function AllClearSummary({ count }) {
 }
 
 function Logo({ size = 40, style: sx = {} }) {
-  return <img src={LOGO_URI} alt="Aurora Health" width={size} height={size}
+  return <img src={LOGO_URI} alt="Aurora Space Health" width={size} height={size}
     style={{ borderRadius: size * 0.28, objectFit: "cover", display: "block", flexShrink: 0, ...sx }}
     onError={e => { e.currentTarget.style.display = "none"; }}/>;
 }
@@ -558,6 +620,7 @@ function LearnCard({ title, body, color, citations }) {
 // ════════════════════════════════════════════════════════════════════════════
 export default function AuroraHealth() {
   const [solar, setSolar] = useState(null);
+  const [forecast, setForecast] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [isLiveData, setIsLiveData] = useState(false);
@@ -612,20 +675,20 @@ export default function AuroraHealth() {
       if (permission === "granted") {
         setNotificationsEnabled(true);
         try { localStorage.setItem("aurora_notif", "true"); } catch {}
-        new Notification("Aurora Health", { body: "Notifications enabled! We'll alert you when solar activity changes.", icon: "/Auroralogo.png" });
+        new Notification("Aurora Space Health", { body: "Notifications enabled! We'll alert you when solar activity changes.", icon: "/Auroralogo.png" });
       }
     } catch {}
   }, [notificationsEnabled]);
 
   const load = useCallback(async () => {
     setBusy(true);
-    const d = await fetchSolar();
-    setSolar(d); setIsLiveData(!!d.live); setLoading(false); setBusy(false); setDismissed([]);
+    const [d, fc] = await Promise.all([fetchSolar(), fetchForecast()]);
+    setSolar(d); setForecast(fc); setIsLiveData(!!d.live); setLoading(false); setBusy(false); setDismissed([]);
     // Check if we should notify
     if (d.live && notificationsEnabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
       const prevKp = solar?.kpIndex;
       if (prevKp !== undefined && prevKp <= 4 && d.kpIndex >= 5) {
-        new Notification("Aurora Health — Solar activity rising", { body: "Moderate solar activity detected. Check your tracked conditions.", icon: "/Auroralogo.png" });
+        new Notification("Aurora Space Health — Solar activity rising", { body: "Moderate solar activity detected. Check your tracked conditions.", icon: "/Auroralogo.png" });
       }
     }
   }, []);
@@ -671,7 +734,7 @@ export default function AuroraHealth() {
   if (!prefs.onboarded) return (
     <div style={{ minHeight: "100vh", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: font }}>
       <div style={{ position: "fixed", inset: 0, background: "radial-gradient(ellipse at 30% 0%, rgba(69,219,168,0.07) 0%, transparent 50%), radial-gradient(ellipse at 70% 10%, rgba(167,139,250,0.07) 0%, transparent 50%), radial-gradient(ellipse at 50% 90%, rgba(244,114,182,0.04) 0%, transparent 35%)", pointerEvents: "none" }} aria-hidden="true"/>
-      <main style={{ width: "100%", maxWidth: 400, position: "relative", zIndex: 1 }} role="main" aria-label="Aurora Health setup">
+      <main style={{ width: "100%", maxWidth: 400, position: "relative", zIndex: 1 }} role="main" aria-label="Aurora Space Health setup">
 
         {step === 1 && (
           <section className="fade-up" aria-labelledby="ob-t1">
@@ -801,14 +864,21 @@ export default function AuroraHealth() {
                 </div>
               )}
 
-              {/* 1 — ALERTS */}
+              {/* 1 — ALERT SUMMARY BANNER */}
               {alerts.length > 0 && (
-                <section aria-label="Active alerts" style={{ marginBottom: 20 }}>
-                  <div className="section-title" style={{ color: T.red }}>⚠ Active alerts</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {alerts.map((r, i) => <div key={r.condition} className="fade-up" style={{ animationDelay: `${i * 0.05}s` }}><AlertCard r={r} onDismiss={() => setDismissed(d => [...d, r.condition])}/></div>)}
+                <button onClick={() => setTab("alerts")} aria-label={`${alerts.length} active alert${alerts.length > 1 ? "s" : ""} — view Alerts tab`}
+                  style={{ width: "100%", background: T.redSoft, border: `1px solid ${T.redBorder}`, borderRadius: T.radiusSm, padding: "11px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", fontFamily: font }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <AlertTriangle size={16} color={T.red} strokeWidth={1.8} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>
+                      {alerts.length} condition{alerts.length > 1 ? "s" : ""} elevated
+                    </span>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {[...new Set(alerts.map(r => r.level))].map(lvl => <RiskBadge key={lvl} level={lvl} />)}
+                    </div>
                   </div>
-                </section>
+                  <ChevronDown size={16} color={T.textTertiary} strokeWidth={2} style={{ transform: "rotate(-90deg)", flexShrink: 0 }} />
+                </button>
               )}
 
               {/* 2 — HEALTH CONDITIONS */}
@@ -828,7 +898,10 @@ export default function AuroraHealth() {
                 <SolarActivityBar kp={solar.kpIndex}/>
               </section>
 
-              {/* 4 — DID YOU KNOW */}
+              {/* 4 — 3-DAY FORECAST */}
+              <ForecastStrip days={forecast} />
+
+              {/* 6 — DID YOU KNOW */}
               <aside className="m-card" style={{ padding: "14px 16px" }} aria-label="Fact">
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                   <Sparkles size={14} color={T.purple} strokeWidth={1.8} />
@@ -839,7 +912,7 @@ export default function AuroraHealth() {
                 </p>
               </aside>
 
-              {/* 5 — DISCLAIMER */}
+              {/* 7 — DISCLAIMER */}
               <div style={{ marginTop: 12 }}>
                 <Disclaimer/>
               </div>

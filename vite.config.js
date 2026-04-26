@@ -9,7 +9,7 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["Auroralogo.png", "favicon.ico"],
       manifest: {
-        name: "Aurora Health",
+        name: "Aurora Space Health",
         short_name: "Aurora",
         description: "Your personal solar health companion — translating space weather into actionable health insights.",
         theme_color: "#060b16",
