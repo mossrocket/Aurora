@@ -1235,7 +1235,7 @@ export default function AuroraHealth() {
                 </div>
               </section>
 
-              <a href="https://buymeacoffee.com/aurorahealth" target="_blank" rel="noopener noreferrer"
+              <a href="https://buymeacoffee.com/auroraspacehealth" target="_blank" rel="noopener noreferrer"
                 style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: "rgba(255,221,0,0.08)", border: "1px solid rgba(255,221,0,0.20)", borderRadius: T.radius, padding: 14, fontSize: 14, fontWeight: 500, color: "#ffdd00", textDecoration: "none", transition: "background 0.15s, border-color 0.15s" }}
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,221,0,0.14)"; e.currentTarget.style.borderColor = "rgba(255,221,0,0.35)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,221,0,0.08)"; e.currentTarget.style.borderColor = "rgba(255,221,0,0.20)"; }}>
