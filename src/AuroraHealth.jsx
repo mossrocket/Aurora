@@ -1114,7 +1114,7 @@ export default function AuroraHealth() {
                 color={T.rose}
                 citations={[
                   { label: "Weydahl et al. (2001) — Geomagnetic activity influences melatonin secretion at latitude 70°N", url: "https://www.sciencedirect.com/science/article/abs/pii/S075333220190006X" },
-                  { label: "Burch et al. (2008) — Geomagnetic activity and human melatonin metabolite excretion", url: "https://pubmed.ncbi.nlm.nih.gov/18981356/" },
+                  { label: "Burch et al. (2008) — Geomagnetic activity and human melatonin metabolite excretion", url: "https://pubmed.ncbi.nlm.nih.gov/18472329/" },
                 ]}
               />
 
@@ -1124,7 +1124,7 @@ export default function AuroraHealth() {
                 color={T.red}
                 citations={[
                   { label: "PMC Meta-analysis (2024) — GS influence on MI, ACS & stroke risk", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12005662/" },
-                  { label: "Communications Medicine (2024) — Solar storms and cardiac admissions in Brazil", url: "https://www.foxweather.com/earth-space/health-study-impact-solar-geomagnetic-storms" },
+                  { label: "Communications Medicine (2025) — Solar storms and cardiac admissions in Brazil", url: "https://www.nature.com/articles/s43856-025-00887-7" },
                 ]}
               />
 
