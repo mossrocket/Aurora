@@ -575,7 +575,7 @@ function AllClearSummary({ count }) {
 
 function Logo({ size = 40, style: sx = {} }) {
   return <img src={LOGO_URI} alt="Aurora Space Health" width={size} height={size}
-    style={{ borderRadius: size * 0.28, objectFit: "cover", display: "block", flexShrink: 0, ...sx }}
+    style={{ borderRadius: 6, objectFit: "cover", display: "block", flexShrink: 0, ...sx }}
     onError={e => { e.currentTarget.style.display = "none"; }}/>;
 }
 
