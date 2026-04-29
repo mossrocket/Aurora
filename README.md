@@ -16,9 +16,9 @@ Do you ever feel "off" for no clear reason? Your body might be reacting to the w
 
 Live data is pulled from the US **NOAA Space Weather Prediction Center (SWPC)**. No sign-up, no API key, no configuration — it just works on first load. The app fetches:
 
-- **Planetary Kp** (estimated, updated every 3 hours) — `/api/noaa/get-kp-index`
+- **Planetary Kp** (estimated, updated every 3 hours, or on refresh) — `/api/noaa/get-kp-index`
 - **Running a-index** (24-hour equivalent amplitude) — `/api/noaa/get-ap-index`
-- **3-day Kp forecast** (planned UI integration) — `/api/noaa/get-kp-forecast`
+- **3-day Kp forecast**  — `/api/noaa/get-kp-forecast`
 
 If the upstream is unreachable, the app falls back to sample data and shows a "Sample data" badge on the dashboard so you know you're not looking at live values.
 
