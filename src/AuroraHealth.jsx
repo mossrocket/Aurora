@@ -905,7 +905,7 @@ export default function AuroraHealth() {
                   <AllClearSummary count={risks.length}/>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {risks.map((r, i) => <div key={r.condition} className="fade-up" style={{ animationDelay: `${0.05 + i * 0.04}s` }}><HealthCard r={r} open={expanded === r.condition} onToggle={() => setExpanded(expanded === r.condition ? null : r.condition)}/></div>)}
+                    {risks.filter(r => r.level !== "low").map((r, i) => <div key={r.condition} className="fade-up" style={{ animationDelay: `${0.05 + i * 0.04}s` }}><HealthCard r={r} open={expanded === r.condition} onToggle={() => setExpanded(expanded === r.condition ? null : r.condition)}/></div>)}
                   </div>
                 )}
               </section>
