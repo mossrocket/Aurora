@@ -79,7 +79,7 @@ function getRisk(name, kp, sensitivity = "Medium") {
   const rule = HEALTH_RULES.find(r => r.condition === name);
   if (!rule) return null;
   // Sensitivity shifts the effective Kp: High sensitivity treats the activity as stronger
-  const offset = sensitivity === "High" ? 1.5 : sensitivity === "Low" ? -1 : 0;
+  const offset = sensitivity === "High" ? 1.5 : sensitivity === "Low" ? -1.5 : 0;
   const effectiveKp = Math.max(0, Math.min(9, kp + offset));
   for (const t of rule.thresholds) {
     if (effectiveKp <= t.max) return { condition: name, icon: rule.icon, slug: rule.slug, level: t.level, desc: t.desc, tip: t.tip };
@@ -91,6 +91,7 @@ function getRisk(name, kp, sensitivity = "Medium") {
 function kpLabel(kp) {
   if (kp <= 1) return "Quiet";
   if (kp <= 3) return "Unsettled";
+  if (kp <= 4) return "Active";
   if (kp <= 5) return "Minor storm";
   if (kp <= 7) return "Moderate storm";
   return "Severe storm";
@@ -687,20 +688,33 @@ export default function AuroraHealth() {
     } catch {}
   }, [notificationsEnabled]);
 
+  const prefsRef = useRef(prefs);
+  const prevSolarRef = useRef(null);
+  const notifEnabledRef = useRef(notificationsEnabled);
+
   const load = useCallback(async () => {
     setBusy(true);
     const [d, fc] = await Promise.all([fetchSolar(), fetchForecast()]);
-    setSolar(d); setForecast(fc); setIsLiveData(!!d.live); setLoading(false); setBusy(false);
-    // Check if we should notify
-    if (d.live && notificationsEnabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
-      const prevKp = solar?.kpIndex;
-      if (prevKp !== undefined && prevKp <= 4 && d.kpIndex >= 5) {
-        new Notification("Aurora Space Health — Solar activity rising", { body: "Moderate solar activity detected. Check your tracked conditions.", icon: "/Auroralogo.png" });
+    if (d.live && notifEnabledRef.current && typeof Notification !== "undefined" && Notification.permission === "granted") {
+      const prevKp = prevSolarRef.current?.kpIndex;
+      if (prevKp !== undefined) {
+        const { sensitivity } = prefsRef.current;
+        const offset = sensitivity === "High" ? 1.5 : sensitivity === "Low" ? -1.5 : 0;
+        const prevEff = Math.max(0, Math.min(9, prevKp + offset));
+        const currEff = Math.max(0, Math.min(9, d.kpIndex + offset));
+        if (prevEff <= 4 && currEff > 4) {
+          new Notification("Aurora Space Health — Solar activity rising", { body: "Solar activity has become elevated for your sensitivity level. Check your tracked conditions.", icon: "/Auroralogo.png" });
+        }
       }
     }
+    prevSolarRef.current = d;
+    setSolar(d); setForecast(fc); setIsLiveData(!!d.live); setLoading(false); setBusy(false);
   }, []);
 
   useEffect(() => { load(); }, []);
+  useEffect(() => { const id = setInterval(load, 15 * 60 * 1000); return () => clearInterval(id); }, [load]);
+  useEffect(() => { prefsRef.current = prefs; }, [prefs]);
+  useEffect(() => { notifEnabledRef.current = notificationsEnabled; }, [notificationsEnabled]);
   useEffect(() => { if (mainRef.current) mainRef.current.focus({ preventScroll: true }); }, [tab]);
   useEffect(() => { if (!prefs.onboarded && step === 1 && nameRef.current) nameRef.current.focus(); }, [prefs.onboarded, step]);
 
