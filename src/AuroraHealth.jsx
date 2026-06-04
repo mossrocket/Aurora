@@ -98,14 +98,6 @@ function kpLabel(kp) {
   return "Severe storm";
 }
 
-function overallMsg(kp) {
-  if (kp <= 1) return "The cosmos is calm — an ideal day for your wellbeing.";
-  if (kp <= 3) return "Conditions are settled. Minor solar activity is unlikely to affect you.";
-  if (kp <= 5) return "Moderate solar activity detected. Sensitive individuals may notice effects.";
-  if (kp <= 7) return "A strong geomagnetic storm is in progress. Take extra care today.";
-  return "Extreme solar storm active. High health impact expected across most conditions.";
-}
-
 function solarScale(kp) {
   // Maps Kp 0–9 to a human-friendly 5-point scale
   if (kp <= 1) return { position: 0.08, label: "Calm", color: T.green, summary: "Very low solar activity. A great day for everyone." };
@@ -777,10 +769,11 @@ function DiaryInsights({ diary }) {
 }
 
 function KpGauge({ value }) {
-  const color = value <= 2 ? T.green : value <= 4 ? T.amber : value <= 6 ? T.rose : T.red;
+  const scale = solarScale(value);
+  const color = scale.color;
   const dash = (value / 9) * 157;
   return (
-    <div style={{ textAlign: "center" }} role="img" aria-label={`Kp index ${value} of 9, ${kpLabel(value)}`}>
+    <div style={{ textAlign: "center" }} role="img" aria-label={`Kp index ${value} of 9, solar activity ${scale.label}`}>
       <div style={{ position: "relative", display: "inline-flex", alignItems: "flex-end", justifyContent: "center" }}>
         <svg width="100" height="56" viewBox="0 0 120 66" aria-hidden="true">
           <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="7" strokeLinecap="round"/>
@@ -792,7 +785,7 @@ function KpGauge({ value }) {
           <div style={{ fontSize: 8, color: T.textTertiary, marginTop: 2, letterSpacing: "0.12em", fontWeight: 500, textTransform: "uppercase" }}>Kp</div>
         </div>
       </div>
-      <div style={{ fontSize: 11, color, fontWeight: 600, marginTop: 4, letterSpacing: "0.02em" }} aria-hidden="true">{kpLabel(value)}</div>
+      <div style={{ fontSize: 11, color, fontWeight: 600, marginTop: 4, letterSpacing: "0.02em" }} aria-hidden="true">{scale.label}</div>
     </div>
   );
 }
@@ -922,15 +915,28 @@ function DashboardHero({ kp, name, risks, today }) {
   const scale = solarScale(kp);
   const highN = risks.filter(r => r.level === "high").length;
   const modN = risks.filter(r => r.level === "moderate").length;
-  const greeting = highN > 0
-    ? `Take it easy today, ${name}`
-    : modN > 0
-    ? `Stay mindful today, ${name}`
-    : `All clear, ${name}`;
+  const overall = highN > 0 ? "high" : modN > 0 ? "moderate" : "low";
+  const accent = rk[overall].text;
+  const solarPhrase = scale.label.toLowerCase();
+
+  // Greeting and message both reflect the user's PERSONAL risk; the message
+  // bridges it to the SOLAR level (shown on the gauge) so the two never clash.
+  let greeting, message;
+  if (highN > 0) {
+    greeting = `Take it easy today, ${name}`;
+    message = `Solar activity is ${solarPhrase}. This may affect ${highN} of the condition${highN > 1 ? "s" : ""} you track — see the details below.`;
+  } else if (modN > 0) {
+    greeting = `Stay mindful today, ${name}`;
+    message = `Solar activity is ${solarPhrase}, but it can still nudge sensitive conditions — ${modN} you track may be more reactive today.`;
+  } else {
+    greeting = `All clear, ${name}`;
+    message = `Solar activity is ${solarPhrase} — unlikely to affect you today.`;
+  }
+
   return (
     <div className="m-card fade-up" style={{
-      background: `linear-gradient(135deg, ${scale.color}18 0%, transparent 65%)`,
-      borderColor: scale.color + "44",
+      background: `linear-gradient(135deg, ${accent}18 0%, transparent 65%)`,
+      borderColor: accent + "44",
       padding: "18px 20px",
       marginBottom: 20,
       boxShadow: T.elevation2,
@@ -941,7 +947,7 @@ function DashboardHero({ kp, name, risks, today }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 17, fontWeight: 600, color: T.text, marginBottom: 5, lineHeight: 1.3 }}>{greeting}</div>
           <p style={{ fontSize: 13, color: T.textSecondary, margin: 0, lineHeight: 1.55, fontWeight: 400 }}>
-            {overallMsg(kp)}
+            {message}
           </p>
         </div>
       </div>
@@ -1688,7 +1694,7 @@ export default function AuroraHealth() {
                     <div style={{ background: T.surface2, borderRadius: T.radiusSm, padding: "12px 14px", textAlign: "center" }}>
                       <div style={{ fontSize: 10, color: T.textTertiary, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4 }}>Kp index</div>
                       <div style={{ fontSize: 24, fontWeight: 700, color: solarScale(solar.kpIndex).color, lineHeight: 1 }}>{solar.kpIndex}</div>
-                      <div style={{ fontSize: 11, color: T.textTertiary, marginTop: 3, fontWeight: 400 }}>{kpLabel(solar.kpIndex)}</div>
+                      <div style={{ fontSize: 11, color: T.textTertiary, marginTop: 3, fontWeight: 400 }}>{solarScale(solar.kpIndex).label}</div>
                     </div>
                     <div style={{ background: T.surface2, borderRadius: T.radiusSm, padding: "12px 14px", textAlign: "center" }}>
                       <div style={{ fontSize: 10, color: T.textTertiary, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4 }}>A-index</div>
