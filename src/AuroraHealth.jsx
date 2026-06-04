@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Brain, Heart, SmilePlus, Bone, Moon, BatteryLow, ChevronDown, Check, RefreshCw, Sun, Settings, CircleCheckBig, Sparkles, BookOpen, ExternalLink, Info, ShieldAlert, Activity, Gauge, Zap, Bell, BellOff, NotebookPen, Plus, Calendar, Trash2, Camera } from "lucide-react";
+import { Brain, Heart, SmilePlus, Bone, Moon, BatteryLow, ChevronDown, Check, RefreshCw, Sun, Settings, CircleCheckBig, Sparkles, BookOpen, ExternalLink, Info, ShieldAlert, Activity, Gauge, Zap, Bell, BellOff, NotebookPen, Plus, Calendar, Trash2, Camera, Download, Share2 } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
@@ -186,6 +186,22 @@ async function fetchForecast() {
   }
 }
 
+async function fetchHistory() {
+  // Daily-max planetary Kp for the past 7 days from our /api/noaa proxy.
+  try {
+    const res = await fetch("/api/noaa/get-kp-history");
+    if (!res.ok) return null;
+    const json = await res.json();
+    const rows = json.data || [];
+    return rows
+      .map(r => ({ date: r.date, kp: Number(r.index) }))
+      .filter(r => r.date && Number.isFinite(r.kp))
+      .slice(-7);
+  } catch {
+    return null;
+  }
+}
+
 // ── THEME ──────────────────────────────────────────────────────────────────
 const T = {
   bg: "#060b16",
@@ -233,6 +249,215 @@ const CONDITION_ICONS = {
 };
 
 const RISK_LABELS = { low: "All clear", moderate: "Caution", high: "Alert" };
+
+// ── SYMPTOM SEVERITY SCALE ──────────────────────────────────────────────────
+// How affected the user *actually* feels for each tracked condition. Stored on
+// each diary entry as `conditionsFelt: { [condition]: 0–4 }` so patterns can be
+// compared against the auto-captured solar snapshot over time.
+const SEVERITY = [
+  { v: 0, label: "None",        color: T.textTertiary },
+  { v: 1, label: "Mild",        color: T.green },
+  { v: 2, label: "Moderate",    color: T.amber },
+  { v: 3, label: "Severe",      color: T.rose },
+  { v: 4, label: "Very severe", color: T.red },
+];
+const severityLabel = (v) => (SEVERITY[v] ? SEVERITY[v].label : "");
+
+// ── DIARY CSV EXPORT ────────────────────────────────────────────────────────
+function csvCell(value) {
+  const s = value === null || value === undefined ? "" : String(value);
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function buildDiaryCSV(entries) {
+  // Collect every condition that appears in either the felt logs or the snapshot
+  const condSet = new Set();
+  entries.forEach(e => {
+    if (e.conditionsFelt) Object.keys(e.conditionsFelt).forEach(c => condSet.add(c));
+    if (e.snapshot && e.snapshot.conditions) e.snapshot.conditions.forEach(c => condSet.add(c.condition));
+  });
+  const conds = [...condSet];
+  const headers = [
+    "Date", "Time", "Mood", "Notes",
+    "Kp index", "Solar level", "Overall risk",
+    ...conds.map(c => `${c} — felt (0-4)`),
+    ...conds.map(c => `${c} — felt label`),
+    ...conds.map(c => `${c} — forecast`),
+  ];
+  // Oldest first makes for a more natural timeline in a spreadsheet
+  const ordered = entries.slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  const rows = ordered.map(e => {
+    const d = new Date(e.timestamp);
+    const date = isNaN(d) ? "" : d.toLocaleDateString("en-CA"); // YYYY-MM-DD
+    const time = isNaN(d) ? "" : d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    const felt = e.conditionsFelt || {};
+    const snapMap = {};
+    if (e.snapshot && e.snapshot.conditions) e.snapshot.conditions.forEach(c => { snapMap[c.condition] = RISK_LABELS[c.level]; });
+    const overall = e.snapshot && e.snapshot.overall ? (RISK_LABELS[e.snapshot.overall] || e.snapshot.overall) : "";
+    return [
+      date, time, e.mood || "", e.text || "",
+      e.snapshot ? e.snapshot.kpIndex : "", e.snapshot ? e.snapshot.solarLevel : "", overall,
+      ...conds.map(c => (felt[c] !== undefined && felt[c] !== null ? felt[c] : "")),
+      ...conds.map(c => (felt[c] !== undefined && felt[c] !== null ? severityLabel(felt[c]) : "")),
+      ...conds.map(c => snapMap[c] || ""),
+    ];
+  });
+  return [headers, ...rows].map(r => r.map(csvCell).join(",")).join("\r\n");
+}
+
+function exportDiaryCSV(entries) {
+  if (!entries || entries.length === 0) return;
+  const csv = "﻿" + buildDiaryCSV(entries); // BOM so Excel reads UTF-8 (emoji moods) correctly
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `aurora-diary-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+// ── SHARE PATTERN IMAGE ─────────────────────────────────────────────────────
+function wrapCanvasText(ctx, text, maxWidth) {
+  const words = String(text).split(" ");
+  const lines = [];
+  let line = "";
+  words.forEach(w => {
+    const test = line ? line + " " + w : w;
+    if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = w; }
+    else line = test;
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+
+// Draws a branded square share card (chart + insight + URL) on a canvas.
+function buildPatternCanvas({ points, condition, insight, dateRange }) {
+  const W = 1080, H = 1080;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const fam = "'DM Sans', system-ui, sans-serif";
+  ctx.textBaseline = "alphabetic";
+
+  ctx.fillStyle = T.bg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = T.green; ctx.fillRect(0, 0, W, 8);
+
+  ctx.fillStyle = T.green; ctx.font = `600 40px ${fam}`;
+  ctx.fillText("Aurora Space Health", 80, 118);
+  ctx.fillStyle = T.textTertiary; ctx.font = `400 26px ${fam}`;
+  ctx.fillText("Solar health diary", 80, 156);
+
+  ctx.fillStyle = T.text; ctx.font = `600 56px ${fam}`;
+  ctx.fillText(`My ${String(condition).toLowerCase()}`, 80, 252);
+  ctx.fillStyle = T.text; ctx.font = `400 40px ${fam}`;
+  ctx.fillText("vs solar activity", 80, 302);
+  if (dateRange) { ctx.fillStyle = T.textTertiary; ctx.font = `400 24px ${fam}`; ctx.fillText(dateRange, 80, 340); }
+
+  const cx0 = 110, cx1 = W - 110, cyTop = 410, cyBase = 720;
+  const n = points.length;
+  const xAt = (i) => (n <= 1 ? (cx0 + cx1) / 2 : cx0 + (i / (n - 1)) * (cx1 - cx0));
+  const yKp = (v) => cyBase - (v / 9) * (cyBase - cyTop);
+  const ySev = (v) => cyBase - (v / 4) * (cyBase - cyTop);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx0, cyBase); ctx.lineTo(cx1, cyBase); ctx.stroke();
+
+  const kpPts = points.map((p, i) => ({ x: xAt(i), y: p.kp != null ? yKp(p.kp) : null })).filter(p => p.y != null);
+  if (kpPts.length) {
+    ctx.beginPath(); ctx.moveTo(kpPts[0].x, cyBase);
+    kpPts.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(kpPts[kpPts.length - 1].x, cyBase); ctx.closePath();
+    ctx.fillStyle = "rgba(251,191,36,0.16)"; ctx.fill();
+    ctx.beginPath(); kpPts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+    ctx.strokeStyle = T.amber; ctx.lineWidth = 4; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.stroke();
+  }
+
+  ctx.lineWidth = 5; ctx.lineCap = "round";
+  for (let i = 1; i < points.length; i++) {
+    if (points[i - 1].sev != null && points[i].sev != null) {
+      ctx.beginPath(); ctx.moveTo(xAt(i - 1), ySev(points[i - 1].sev)); ctx.lineTo(xAt(i), ySev(points[i].sev));
+      ctx.strokeStyle = T.purple; ctx.stroke();
+    }
+  }
+  points.forEach((p, i) => {
+    if (p.sev != null) {
+      ctx.beginPath(); ctx.arc(xAt(i), ySev(p.sev), 9, 0, Math.PI * 2);
+      ctx.fillStyle = SEVERITY[p.sev].color; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = T.bg; ctx.stroke();
+    }
+  });
+
+  ctx.fillStyle = T.purple; ctx.font = `500 22px ${fam}`; ctx.textAlign = "right";
+  ctx.fillText("4", cx0 - 14, cyTop + 8); ctx.fillStyle = T.textTertiary; ctx.fillText("0", cx0 - 14, cyBase + 8);
+  ctx.fillStyle = T.amber; ctx.textAlign = "left"; ctx.fillText("9", cx1 + 14, cyTop + 8); ctx.fillStyle = T.textTertiary; ctx.fillText("0", cx1 + 14, cyBase + 8);
+  ctx.textAlign = "left";
+
+  const ly = 790;
+  ctx.fillStyle = T.purple; ctx.beginPath(); ctx.arc(120, ly - 8, 10, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = T.textSecondary; ctx.font = `400 26px ${fam}`; ctx.fillText("Felt severity (0–4)", 144, ly);
+  ctx.fillStyle = T.amber; ctx.fillRect(470, ly - 11, 28, 6);
+  ctx.fillStyle = T.textSecondary; ctx.fillText("Solar Kp (0–9)", 510, ly);
+
+  ctx.fillStyle = T.text; ctx.font = `400 34px ${fam}`;
+  let iy = 868;
+  wrapCanvasText(ctx, insight, W - 160).slice(0, 4).forEach(line => { ctx.fillText(line, 80, iy); iy += 46; });
+
+  ctx.fillStyle = T.textTertiary; ctx.font = `400 26px ${fam}`;
+  ctx.fillText("Track how space weather affects you — free at AuroraSpace.health", 80, H - 64);
+
+  return canvas;
+}
+
+async function sharePatternImage(args, onDownload) {
+  let canvas;
+  try { canvas = buildPatternCanvas(args); } catch { return; }
+  const fileName = `aurora-pattern-${String(args.condition || "chart").toLowerCase().replace(/\s+/g, "-")}.png`;
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+  if (!blob) return;
+  try {
+    const file = new File([blob], fileName, { type: "image/png" });
+    if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: "My solar health pattern", text: args.insight });
+      return;
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") return; // user cancelled — don't also download
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+  if (onDownload) onDownload();
+}
+
+// ── WEB PUSH HELPERS ────────────────────────────────────────────────────────
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || "";
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+function pushSupported() {
+  return typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+
+function isiOS() {
+  return typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function isStandalone() {
+  return (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+    (typeof navigator !== "undefined" && navigator.standalone === true);
+}
 
 const font = "'DM Sans', 'SF Pro Text', system-ui, -apple-system, sans-serif";
 
@@ -311,6 +536,15 @@ const CSS = `
 .diary-entry{border-top:1px solid rgba(255,255,255,0.06);padding:14px 0}
 .diary-entry:first-child{border-top:none}
 
+.sev-row{padding:10px 0;border-top:1px solid rgba(255,255,255,0.05)}
+.sev-row:first-of-type{border-top:none}
+.sev-btn{
+  flex:1;height:30px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.1);
+  background:transparent;font-family:${font};font-size:12px;font-weight:600;cursor:pointer;
+  transition:border-color 0.15s,background 0.15s,color 0.15s;
+}
+.sev-btn:hover{border-color:rgba(255,255,255,0.28)}
+
 .badge-count{
   position:absolute;top:2px;right:calc(50% - 22px);background:${T.red};color:#fff;border-radius:10px;
   font-size:10px;font-weight:700;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;padding:0 4px;
@@ -343,6 +577,203 @@ function CondIcon({ icon, size = 20, color }) {
   const Comp = CONDITION_ICONS[icon];
   if (!Comp) return null;
   return <Comp size={size} color={color || T.textSecondary} strokeWidth={1.8} />;
+}
+
+function ConditionSeverityRow({ condition, icon, value, onChange }) {
+  const sel = value !== null && value !== undefined ? SEVERITY[value] : null;
+  return (
+    <div className="sev-row">
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <CondIcon icon={icon} size={16} color={sel ? sel.color : T.textSecondary} />
+        <span style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{condition}</span>
+        <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 500, color: sel ? sel.color : T.textTertiary }}>
+          {sel ? sel.label : "Not logged"}
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: 6 }} role="radiogroup" aria-label={`${condition} severity`}>
+        {SEVERITY.map(s => {
+          const active = value === s.v;
+          return (
+            <button
+              key={s.v}
+              type="button"
+              className="sev-btn"
+              role="radio"
+              aria-checked={active}
+              aria-label={`${condition}: ${s.label}`}
+              title={s.label}
+              onClick={() => onChange(active ? null : s.v)}
+              style={{
+                borderColor: active ? s.color : undefined,
+                background: active ? s.color + "22" : undefined,
+                color: active ? s.color : T.textTertiary,
+              }}
+            >
+              {s.v}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Dependency-free SVG chart: felt severity (0–4) vs solar Kp (0–9) over time.
+function SeverityKpChart({ points }) {
+  const W = 340, H = 184, padL = 26, padR = 26, padT = 14, padB = 30;
+  const x0 = padL, x1 = W - padR, yBase = H - padB, yTop = padT;
+  const n = points.length;
+  const xAt = (i) => (n <= 1 ? (x0 + x1) / 2 : x0 + (i / (n - 1)) * (x1 - x0));
+  const yKp = (v) => yBase - (v / 9) * (yBase - yTop);
+  const ySev = (v) => yBase - (v / 4) * (yBase - yTop);
+
+  // Solar Kp — area + line
+  const kpPts = points.map((p, i) => ({ x: xAt(i), y: p.kp != null ? yKp(p.kp) : null })).filter(p => p.y != null);
+  const kpLine = kpPts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const kpArea = kpPts.length
+    ? `M${kpPts[0].x.toFixed(1)} ${yBase} ` + kpPts.map(p => `L${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ") + ` L${kpPts[kpPts.length - 1].x.toFixed(1)} ${yBase} Z`
+    : "";
+
+  // Felt severity — line segments between adjacent logged points + dots
+  const sevSegs = [];
+  for (let i = 1; i < points.length; i++) {
+    if (points[i - 1].sev != null && points[i].sev != null) {
+      sevSegs.push(`M${xAt(i - 1).toFixed(1)} ${ySev(points[i - 1].sev).toFixed(1)} L${xAt(i).toFixed(1)} ${ySev(points[i].sev).toFixed(1)}`);
+    }
+  }
+  const sevDots = points.map((p, i) => (p.sev != null ? { x: xAt(i), y: ySev(p.sev), c: SEVERITY[p.sev].color } : null)).filter(Boolean);
+
+  // X labels: first, middle, last
+  const fmt = (t) => t.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+  const labelIdx = n <= 1 ? [0] : [...new Set([0, Math.floor((n - 1) / 2), n - 1])];
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Chart of your felt symptom severity against solar Kp index over time" style={{ display: "block" }}>
+      {/* baseline + top gridline */}
+      <line x1={x0} y1={yBase} x2={x1} y2={yBase} stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
+      <line x1={x0} y1={yTop} x2={x1} y2={yTop} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+      {/* axis captions */}
+      <text x={x0 - 4} y={yTop + 4} textAnchor="end" fontSize="8" fill={T.purple} fontFamily={font}>4</text>
+      <text x={x0 - 4} y={yBase} textAnchor="end" fontSize="8" fill={T.textTertiary} fontFamily={font}>0</text>
+      <text x={x1 + 4} y={yTop + 4} textAnchor="start" fontSize="8" fill={T.amber} fontFamily={font}>9</text>
+      <text x={x1 + 4} y={yBase} textAnchor="start" fontSize="8" fill={T.textTertiary} fontFamily={font}>0</text>
+      {/* Kp area + line */}
+      {kpArea && <path d={kpArea} fill={T.amber} opacity="0.10" />}
+      {kpLine && <path d={kpLine} fill="none" stroke={T.amber} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" opacity="0.85" />}
+      {/* Severity line + dots */}
+      {sevSegs.map((d, i) => <path key={i} d={d} fill="none" stroke={T.purple} strokeWidth="2" strokeLinecap="round" />)}
+      {sevDots.map((d, i) => <circle key={i} cx={d.x} cy={d.y} r="3.2" fill={d.c} stroke={T.bg} strokeWidth="1" />)}
+      {/* X labels */}
+      {labelIdx.map(i => (
+        <text key={i} x={xAt(i)} y={H - 10} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"} fontSize="8.5" fill={T.textTertiary} fontFamily={font}>
+          {fmt(points[i].t)}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+function DiaryInsights({ diary }) {
+  const chron = diary.slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  const loggedCount = {};
+  chron.forEach(e => { if (e.conditionsFelt) Object.entries(e.conditionsFelt).forEach(([c, v]) => { if (v != null) loggedCount[c] = (loggedCount[c] || 0) + 1; }); });
+  const loggedConds = Object.keys(loggedCount).sort((a, b) => loggedCount[b] - loggedCount[a]);
+  const [sel, setSel] = useState(loggedConds[0] || null);
+  const [imgMsg, setImgMsg] = useState("");
+  if (loggedConds.length === 0) return null;
+  const active = loggedConds.includes(sel) ? sel : loggedConds[0];
+
+  const points = chron.slice(-21).map(e => ({
+    t: new Date(e.timestamp),
+    kp: e.snapshot ? e.snapshot.kpIndex : null,
+    sev: e.conditionsFelt && e.conditionsFelt[active] != null ? e.conditionsFelt[active] : null,
+  }));
+
+  // Calm (Kp ≤ 3) vs more active (Kp ≥ 4) comparison for the selected condition
+  const withSev = chron.filter(e => e.conditionsFelt && e.conditionsFelt[active] != null && e.snapshot);
+  const calm = withSev.filter(e => e.snapshot.kpIndex <= 3);
+  const act = withSev.filter(e => e.snapshot.kpIndex >= 4);
+  const avg = (arr) => arr.reduce((s, e) => s + e.conditionsFelt[active], 0) / arr.length;
+  let insight, tone = T.textSecondary;
+  if (calm.length >= 1 && act.length >= 1) {
+    const ca = avg(calm), aa = avg(act), diff = aa - ca;
+    if (diff >= 0.5) { insight = `On more active solar days your ${active.toLowerCase()} averages ${aa.toFixed(1)}/4, versus ${ca.toFixed(1)}/4 on calmer days — it does seem to rise with solar activity.`; tone = T.rose; }
+    else if (diff <= -0.5) { insight = `Your ${active.toLowerCase()} actually averages lower on more active solar days (${aa.toFixed(1)}/4 vs ${ca.toFixed(1)}/4 on calmer days).`; tone = T.green; }
+    else { insight = `So far your ${active.toLowerCase()} looks fairly steady across calm and active solar days (${aa.toFixed(1)} vs ${ca.toFixed(1)} out of 4).`; tone = T.textSecondary; }
+  } else {
+    insight = `Keep logging on both calm and active solar days to reveal whether your ${active.toLowerCase()} tracks with space weather.`;
+  }
+
+  const firstDate = chron[0] ? new Date(chron[0].timestamp).toLocaleDateString("en-AU", { day: "numeric", month: "short" }) : "";
+  const fmtShort = (t) => t.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+  const dateRange = points.length ? (points.length === 1 ? fmtShort(points[0].t) : `${fmtShort(points[0].t)} – ${fmtShort(points[points.length - 1].t)}`) : "";
+
+  const onSharePattern = () => {
+    sharePatternImage({ points, condition: active, insight, dateRange }, () => {
+      setImgMsg("Image saved");
+      setTimeout(() => setImgMsg(""), 2500);
+    });
+  };
+
+  return (
+    <section className="m-card" style={{ boxShadow: T.elevation2 }} aria-label="Your patterns">
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <Activity size={16} color={T.purple} strokeWidth={1.8} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: T.purple }}>Your patterns</span>
+        <span style={{ marginLeft: "auto", fontSize: 11, color: T.textTertiary }}>
+          {diary.length} {diary.length === 1 ? "entry" : "entries"}{firstDate ? ` · since ${firstDate}` : ""}
+        </span>
+      </div>
+      <p style={{ fontSize: 12, color: T.textTertiary, margin: "0 0 12px", lineHeight: 1.5 }}>
+        How your symptoms line up with solar activity over time.
+      </p>
+
+      {/* Condition selector */}
+      {loggedConds.length > 1 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }} role="tablist" aria-label="Choose condition">
+          {loggedConds.map(c => {
+            const on = c === active;
+            return (
+              <button key={c} type="button" role="tab" aria-selected={on} onClick={() => setSel(c)}
+                style={{ fontSize: 11, fontWeight: 500, fontFamily: font, padding: "5px 10px", borderRadius: 16, cursor: "pointer",
+                  border: `1px solid ${on ? T.purpleBorder : T.border}`, background: on ? T.purpleSoft : "transparent", color: on ? T.purple : T.textTertiary, transition: "all 0.15s" }}>
+                {c}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <SeverityKpChart points={points} />
+
+      {/* Legend */}
+      <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 6, marginBottom: 12 }} aria-hidden="true">
+        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: T.textSecondary }}>
+          <span style={{ width: 10, height: 10, borderRadius: "50%", background: T.purple, display: "inline-block" }} /> Felt severity (0–4)
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: T.textSecondary }}>
+          <span style={{ width: 14, height: 3, borderRadius: 2, background: T.amber, display: "inline-block" }} /> Solar Kp (0–9)
+        </span>
+      </div>
+
+      {/* Insight */}
+      <div style={{ background: tone + "12", border: `1px solid ${tone}33`, borderRadius: T.radiusSm, padding: "11px 14px" }}>
+        <p style={{ fontSize: 13, color: T.text, margin: 0, lineHeight: 1.55, fontWeight: 400 }}>{insight}</p>
+      </div>
+      <p style={{ fontSize: 10, color: T.textTertiary, margin: "8px 0 0", lineHeight: 1.5, fontWeight: 400 }}>
+        Based on your own entries. This is a personal pattern, not a diagnosis — correlation isn't causation, especially with few entries.
+      </p>
+
+      <button
+        onClick={onSharePattern}
+        className="btn-tonal"
+        style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        aria-label="Share my pattern as an image"
+      >
+        <Share2 size={16} strokeWidth={1.8} /> {imgMsg || "Share my pattern"}
+      </button>
+    </section>
+  );
 }
 
 function KpGauge({ value }) {
@@ -454,6 +885,31 @@ function ForecastStrip({ days }) {
               <div style={{ fontSize: 9, color: T.textTertiary, marginBottom: 6, letterSpacing: "0.08em", textTransform: "uppercase" }}>Kp</div>
               <div style={{ fontSize: 10, color: scale.color, fontWeight: 600, marginBottom: 4 }}>{scale.label}</div>
               <div style={{ fontSize: 10, color: impactColor, fontWeight: 500 }}>{impact}</div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function HistoryStrip({ days }) {
+  if (!days || days.length === 0) return null;
+  const maxKp = Math.max(9, ...days.map(d => d.kp));
+  return (
+    <section aria-label="7-day solar activity history" className="m-card" style={{ padding: "14px 16px", marginBottom: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: T.textTertiary, marginBottom: 12 }}>Past 7 days</div>
+      <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 76 }}>
+        {days.map(({ date, kp }) => {
+          const scale = solarScale(kp);
+          const label = new Date(date + "T12:00:00").toLocaleDateString("en-AU", { weekday: "narrow" });
+          const h = Math.max(6, Math.round((kp / maxKp) * 56));
+          return (
+            <div key={date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}
+              title={`${new Date(date + "T12:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })} · Kp ${kp} (${scale.label})`}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: scale.color, lineHeight: 1 }}>{kp}</span>
+              <div style={{ width: "100%", maxWidth: 26, height: h, borderRadius: 5, background: scale.color, opacity: 0.85 }} aria-hidden="true" />
+              <span style={{ fontSize: 10, color: T.textTertiary, fontWeight: 500 }}>{label}</span>
             </div>
           );
         })}
@@ -631,6 +1087,7 @@ function LearnCard({ title, body, color, citations }) {
 export default function AuroraHealth() {
   const [solar, setSolar] = useState(null);
   const [forecast, setForecast] = useState(null);
+  const [history, setHistory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [isLiveData, setIsLiveData] = useState(false);
@@ -641,9 +1098,13 @@ export default function AuroraHealth() {
   });
   const [diaryInput, setDiaryInput] = useState("");
   const [diaryMood, setDiaryMood] = useState(null);
+  const [condSeverity, setCondSeverity] = useState({});
+  const [shareMsg, setShareMsg] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     try { return localStorage.getItem("aurora_notif") === "true"; } catch { return false; }
   });
+  const [notifMsg, setNotifMsg] = useState("");
+  const [notifBusy, setNotifBusy] = useState(false);
   const defaultPrefs = { name: "", conditions: ["Migraines","Heart Health","Mental Health"], sensitivity: "Medium", apiKey: "", onboarded: false };
 
   const [prefs, setPrefs] = useState(() => {
@@ -674,19 +1135,71 @@ export default function AuroraHealth() {
   }, [diary, saveDiary]);
 
   const toggleNotifications = useCallback(async () => {
+    setNotifMsg("");
+
+    // ── Turn OFF ──
     if (notificationsEnabled) {
+      setNotifBusy(true);
+      try {
+        const reg = await navigator.serviceWorker?.ready;
+        const sub = reg && (await reg.pushManager.getSubscription());
+        if (sub) {
+          await fetch("/api/push/unsubscribe", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          }).catch(() => {});
+          await sub.unsubscribe().catch(() => {});
+        }
+      } catch {}
       setNotificationsEnabled(false);
       try { localStorage.setItem("aurora_notif", "false"); } catch {}
+      setNotifBusy(false);
       return;
     }
+
+    // ── Turn ON ──
+    if (!pushSupported()) {
+      setNotifMsg(isiOS() && !isStandalone()
+        ? "On iPhone, add Aurora to your Home Screen first (Share → Add to Home Screen), then enable notifications."
+        : "Your browser doesn't support push notifications.");
+      return;
+    }
+    if (!VAPID_PUBLIC_KEY) {
+      setNotifMsg("Notifications aren't configured on this deployment yet.");
+      return;
+    }
+
+    setNotifBusy(true);
     try {
       const permission = await Notification.requestPermission();
-      if (permission === "granted") {
-        setNotificationsEnabled(true);
-        try { localStorage.setItem("aurora_notif", "true"); } catch {}
-        new Notification("Aurora Space Health", { body: "Notifications enabled! We'll alert you when solar activity changes.", icon: "/Auroralogo.png" });
+      if (permission !== "granted") {
+        setNotifMsg(permission === "denied"
+          ? "Notifications are blocked. Enable them for this site in your browser settings."
+          : "Notification permission wasn't granted.");
+        setNotifBusy(false);
+        return;
       }
-    } catch {}
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+      }
+      const resp = await fetch("/api/push/subscribe", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sub),
+      });
+      if (!resp.ok) throw new Error("Subscription store failed");
+
+      setNotificationsEnabled(true);
+      try { localStorage.setItem("aurora_notif", "true"); } catch {}
+      try { new Notification("Aurora Space Health", { body: "Notifications on. We'll alert you when solar activity rises.", icon: "/Auroralogo.png" }); } catch {}
+    } catch (err) {
+      setNotifMsg("Couldn't enable notifications. Please try again.");
+    }
+    setNotifBusy(false);
   }, [notificationsEnabled]);
 
   const prefsRef = useRef(prefs);
@@ -695,21 +1208,12 @@ export default function AuroraHealth() {
 
   const load = useCallback(async () => {
     setBusy(true);
-    const [d, fc] = await Promise.all([fetchSolar(), fetchForecast()]);
-    if (d.live && notifEnabledRef.current && typeof Notification !== "undefined" && Notification.permission === "granted") {
-      const prevKp = prevSolarRef.current?.kpIndex;
-      if (prevKp !== undefined) {
-        const { sensitivity } = prefsRef.current;
-        const offset = sensitivity === "High" ? 1.5 : sensitivity === "Low" ? -1.5 : 0;
-        const prevEff = Math.max(0, Math.min(9, prevKp + offset));
-        const currEff = Math.max(0, Math.min(9, d.kpIndex + offset));
-        if (prevEff <= 4 && currEff > 4) {
-          new Notification("Aurora Space Health — Solar activity rising", { body: "Solar activity has become elevated for your sensitivity level. Check your tracked conditions.", icon: "/Auroralogo.png" });
-        }
-      }
-    }
+    const [d, fc, hist] = await Promise.all([fetchSolar(), fetchForecast(), fetchHistory()]);
+    // Rising-activity alerts are now delivered via background Web Push (see
+    // /api/cron/check-kp), so they fire even when the app is closed. We no longer
+    // raise a foreground Notification here to avoid double-notifying.
     prevSolarRef.current = d;
-    setSolar(d); setForecast(fc); setIsLiveData(!!d.live); setLoading(false); setBusy(false);
+    setSolar(d); setForecast(fc); setHistory(hist); setIsLiveData(!!d.live); setLoading(false); setBusy(false);
   }, []);
 
   useEffect(() => { load(); }, []);
@@ -724,12 +1228,17 @@ export default function AuroraHealth() {
   const modN = risks.filter(r => r.level === "moderate").length;
   const overall = highN > 0 ? "high" : modN > 0 ? "moderate" : "low";
 
+  const hasSeverity = Object.values(condSeverity).some(v => v !== null && v !== undefined);
+
   const addDiaryEntry = () => {
-    if (!diaryInput.trim() && !diaryMood) return;
+    if (!diaryInput.trim() && !diaryMood && !hasSeverity) return;
+    const felt = {};
+    Object.entries(condSeverity).forEach(([k, v]) => { if (v !== null && v !== undefined) felt[k] = v; });
     const entry = {
       id: Date.now(),
       text: diaryInput.trim(),
       mood: diaryMood,
+      conditionsFelt: Object.keys(felt).length ? felt : null,
       timestamp: new Date().toISOString(),
       snapshot: solar ? {
         kpIndex: solar.kpIndex,
@@ -741,6 +1250,32 @@ export default function AuroraHealth() {
     saveDiary([entry, ...diary]);
     setDiaryInput("");
     setDiaryMood(null);
+    setCondSeverity({});
+  };
+
+  const shareToday = async () => {
+    const level = solar ? solarScale(solar.kpIndex).label : "—";
+    const summary = highN > 0
+      ? `${highN} of my tracked conditions are on alert today`
+      : modN > 0
+      ? `${modN} of my tracked conditions need caution today`
+      : "all my tracked conditions are clear today";
+    const text = `Today's solar activity is ${level} — ${summary}. Tracking how space weather affects my wellbeing with Aurora Space Health.`;
+    const url = "https://AuroraSpace.health";
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ title: "Aurora Space Health", text, url });
+        return;
+      }
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(`${text} ${url}`);
+        setShareMsg("Copied to clipboard");
+        setTimeout(() => setShareMsg(""), 2500);
+        return;
+      }
+    } catch {
+      /* user cancelled share or API unavailable — no-op */
+    }
   };
 
   useEffect(() => {
@@ -916,7 +1451,10 @@ export default function AuroraHealth() {
                 <SolarActivityBar kp={solar.kpIndex}/>
               </section>
 
-              {/* 4 — 3-DAY FORECAST */}
+              {/* 4 — 7-DAY HISTORY */}
+              <HistoryStrip days={history} />
+
+              {/* 5 — 3-DAY FORECAST */}
               <ForecastStrip days={forecast} />
 
               {/* 6 — DID YOU KNOW */}
@@ -930,7 +1468,26 @@ export default function AuroraHealth() {
                 </p>
               </aside>
 
-              {/* 7 — DISCLAIMER */}
+              {/* 7 — SHARE + SUPPORT */}
+              <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                <button
+                  onClick={shareToday}
+                  className="btn-tonal"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                  aria-label="Share today's solar health status"
+                >
+                  <Share2 size={16} strokeWidth={1.8} /> {shareMsg || "Share today's status"}
+                </button>
+
+                <a href="https://buymeacoffee.com/auroraspacehealth" target="_blank" rel="noopener noreferrer"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: "rgba(255,221,0,0.08)", border: "1px solid rgba(255,221,0,0.20)", borderRadius: T.radius, padding: 14, fontSize: 14, fontWeight: 500, color: "#ffdd00", textDecoration: "none", transition: "background 0.15s, border-color 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,221,0,0.14)"; e.currentTarget.style.borderColor = "rgba(255,221,0,0.35)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,221,0,0.08)"; e.currentTarget.style.borderColor = "rgba(255,221,0,0.20)"; }}>
+                  <span style={{ fontSize: 18 }}>☕</span> Buy me a coffee
+                </a>
+              </div>
+
+              {/* 8 — DISCLAIMER */}
               <div style={{ marginTop: 12 }}>
                 <Disclaimer/>
               </div>
@@ -940,9 +1497,22 @@ export default function AuroraHealth() {
           {/* ════ DIARY ════ */}
           {tab === "diary" && (
             <div className="fade-up" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div>
-                <h1 style={{ fontSize: 20, fontWeight: 600, color: T.text, margin: "0 0 4px" }}>Your diary</h1>
-                <p style={{ fontSize: 13, color: T.textSecondary, margin: 0, fontWeight: 400 }}>Track how you feel — each entry captures today's solar conditions automatically.</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                <div>
+                  <h1 style={{ fontSize: 20, fontWeight: 600, color: T.text, margin: "0 0 4px" }}>Your diary</h1>
+                  <p style={{ fontSize: 13, color: T.textSecondary, margin: 0, fontWeight: 400 }}>Rate how each condition affects you — every entry captures today's solar conditions automatically, so patterns surface over time.</p>
+                </div>
+                {diary.length > 0 && (
+                  <button
+                    onClick={() => exportDiaryCSV(diary)}
+                    aria-label="Export diary as CSV"
+                    style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6, background: T.surface2, color: T.textSecondary, border: `1px solid ${T.border}`, borderRadius: T.radiusSm, padding: "8px 12px", fontSize: 13, fontWeight: 500, fontFamily: font, cursor: "pointer", transition: "background 0.15s, border-color 0.15s, color 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = T.surface3; e.currentTarget.style.borderColor = T.borderFocus; e.currentTarget.style.color = T.text; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = T.surface2; e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSecondary; }}
+                  >
+                    <Download size={14} strokeWidth={1.8} /> Export
+                  </button>
+                )}
               </div>
 
               {/* New entry */}
@@ -977,6 +1547,28 @@ export default function AuroraHealth() {
                   </div>
                 </div>
 
+                {/* Per-condition severity */}
+                {prefs.conditions.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, color: T.textTertiary, fontWeight: 500, marginBottom: 4 }}>How are your conditions affecting you?</div>
+                    <div style={{ fontSize: 10, color: T.textTertiary, fontWeight: 400, marginBottom: 6 }}>0 = none · 4 = very severe · tap again to clear</div>
+                    <div>
+                      {prefs.conditions.map(c => {
+                        const ru = HEALTH_RULES.find(r => r.condition === c);
+                        return (
+                          <ConditionSeverityRow
+                            key={c}
+                            condition={c}
+                            icon={ru?.icon}
+                            value={condSeverity[c] ?? null}
+                            onChange={(v) => setCondSeverity(prev => ({ ...prev, [c]: v }))}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <textarea
                   className="m-input"
                   value={diaryInput}
@@ -989,11 +1581,16 @@ export default function AuroraHealth() {
                   className="btn-filled"
                   style={{ background: T.green, color: "#000", marginTop: 10 }}
                   onClick={addDiaryEntry}
-                  disabled={!diaryInput.trim() && !diaryMood}
+                  disabled={!diaryInput.trim() && !diaryMood && !hasSeverity}
                 >
                   Save entry
                 </button>
               </div>
+
+              {/* Patterns / insights */}
+              {diary.length >= 2 && diary.some(e => e.conditionsFelt && Object.keys(e.conditionsFelt).length > 0) && (
+                <DiaryInsights diary={diary} />
+              )}
 
               {/* Entries list */}
               {diary.length === 0 ? (
@@ -1028,6 +1625,22 @@ export default function AuroraHealth() {
                             </button>
                           </div>
                           {entry.text && <p style={{ fontSize: 13, color: T.textSecondary, margin: "0 0 8px", lineHeight: 1.6 }}>{entry.text}</p>}
+                          {entry.conditionsFelt && Object.keys(entry.conditionsFelt).length > 0 && (
+                            <div style={{ marginBottom: 8 }}>
+                              <div style={{ fontSize: 10, color: T.textTertiary, fontWeight: 500, letterSpacing: "0.04em", marginBottom: 4 }}>How you felt</div>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                {Object.entries(entry.conditionsFelt).map(([cond, v]) => {
+                                  const s = SEVERITY[v];
+                                  if (!s) return null;
+                                  return (
+                                    <span key={cond} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, background: s.color + "1A", color: s.color, border: `1px solid ${s.color}33` }}>
+                                      {cond}: {s.label}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                           {entry.snapshot && (
                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                               <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, background: T.surface2, color: T.textTertiary, display: "flex", alignItems: "center", gap: 4 }}>
@@ -1229,10 +1842,11 @@ export default function AuroraHealth() {
                         <div style={{ fontSize: 12, color: T.textTertiary, fontWeight: 400 }}>Get alerted when solar activity changes</div>
                       </div>
                     </div>
-                    <button onClick={toggleNotifications} style={{
-                      width: 44, height: 26, borderRadius: 13, border: "none", cursor: "pointer",
+                    <button onClick={toggleNotifications} disabled={notifBusy} role="switch" aria-checked={notificationsEnabled}
+                      aria-label="Toggle push notifications" style={{
+                      width: 44, height: 26, borderRadius: 13, border: "none", cursor: notifBusy ? "wait" : "pointer",
                       background: notificationsEnabled ? T.green : T.surface3,
-                      position: "relative", transition: "background 0.2s",
+                      position: "relative", transition: "background 0.2s", opacity: notifBusy ? 0.6 : 1,
                     }}>
                       <div style={{
                         width: 20, height: 20, borderRadius: "50%", background: "#fff",
@@ -1243,9 +1857,14 @@ export default function AuroraHealth() {
                       }}/>
                     </button>
                   </div>
-                  {notificationsEnabled && (
+                  {notificationsEnabled && !notifMsg && (
                     <p style={{ fontSize: 12, color: T.textTertiary, margin: "10px 0 0", lineHeight: 1.5, fontWeight: 400 }}>
-                      You'll receive a notification when solar activity rises to moderate or higher levels.
+                      You'll receive an alert when geomagnetic activity rises into storm levels — even when the app is closed. Generic and anonymous; your conditions stay on your device.
+                    </p>
+                  )}
+                  {notifMsg && (
+                    <p role="status" style={{ fontSize: 12, color: T.amber, margin: "10px 0 0", lineHeight: 1.5, fontWeight: 400 }}>
+                      {notifMsg}
                     </p>
                   )}
                 </div>

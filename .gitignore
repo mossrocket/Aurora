@@ -2,3 +2,15 @@ node_modules
 dist
 .DS_Store
 *.local
+
+# Claude Code local state / worktrees (ephemeral — never commit)
+.claude/worktrees/
+.claude/settings.local.json
+
+# Environment & secrets (VAPID private key, Upstash tokens, etc.)
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel

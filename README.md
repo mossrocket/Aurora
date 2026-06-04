@@ -10,7 +10,8 @@ Do you ever feel "off" for no clear reason? Your body might be reacting to the w
 - **Live NOAA Integration**: Real-time tracking of the Kp-index and A-index—the gold standards for measuring disturbances in Earth's magnetic field.
 - **Personalized Alerts**: Receive "Caution" notifications when solar activity peaks, specifically tailored to your sensitivity for migraines, joint pain, or fatigue.
 - **Evidence-Based Insights**: Built on heliobiology research linking geomagnetic storms to shifts in heart rate variability (HRV) and circadian rhythms.
-- **Privacy-First Diary**: Track your daily symptoms alongside cosmic shifts to discover your own "Space Weather Sensitivity."
+- **Privacy-First Diary**: Rate how each tracked condition affects you (0–4) alongside an automatic solar snapshot, see your personal "felt severity vs Kp" pattern chart, and export everything to CSV. All data stays on your device.
+- **7-Day History & Outlook**: A past-week Kp strip and 3-day forecast on the Today tab to spot trends at a glance.
 
 ## Live solar data
 
@@ -19,8 +20,22 @@ Live data is pulled from the US **NOAA Space Weather Prediction Center (SWPC)**.
 - **Planetary Kp** (estimated, updated every 3 hours, or on refresh) — `/api/noaa/get-kp-index`
 - **Running a-index** (24-hour equivalent amplitude) — `/api/noaa/get-ap-index`
 - **3-day Kp forecast**  — `/api/noaa/get-kp-forecast`
+- **7-day Kp history** (daily maximum) — `/api/noaa/get-kp-history`
 
 If the upstream is unreachable, the app falls back to sample data and shows a "Sample data" badge on the dashboard so you know you're not looking at live values.
+
+## Push notifications (background)
+
+Aurora sends a generic "solar activity is rising" alert via the Web Push API when the planetary Kp index crosses into storm levels — even when the app is closed. Alerts are anonymous: only an opaque push subscription is stored, never your conditions or sensitivity (those stay on your device and are applied locally).
+
+Setup (one-time):
+
+1. Generate VAPID keys: `npx web-push generate-vapid-keys`
+2. Create an Upstash Redis database at https://console.upstash.com and copy its REST URL + token.
+3. Copy `.env.example` to `.env.local` and fill it in (see that file for every key). Set the same variables in Vercel → Project → Settings → Environment Variables.
+4. Deploy. The Vercel Cron in `vercel.json` calls `/api/cron/check-kp` hourly to check NOAA and fan out alerts.
+
+Pieces: custom service worker (`src/sw.js`, injectManifest), subscribe/unsubscribe functions (`api/push/*`), and the cron sender (`api/cron/check-kp.js`). Notes: frequent crons need a Vercel Pro plan (Hobby is limited to daily — or trigger the endpoint from an external scheduler using `CRON_SECRET`); and on iPhone, Web Push only works once the PWA is added to the Home Screen (iOS 16.4+).
 
 ## Tech stack
 
@@ -33,6 +48,10 @@ If the upstream is unreachable, the app falls back to sample data and shows a "S
 ## Medical disclaimer
 
 Aurora Space Health is for informational purposes only. It surfaces correlational research between geomagnetic activity and health, and does **not** provide medical advice, diagnosis, or treatment. Always consult a qualified health professional for health decisions.
+
+## Acknowledgements
+
+- **Patricia N.** — for suggesting the per-condition symptom tracking and diary export features.
 
 ## License
 

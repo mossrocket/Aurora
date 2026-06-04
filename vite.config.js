@@ -6,7 +6,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.js",
       registerType: "autoUpdate",
+      injectRegister: "auto",
       includeAssets: ["Auroralogo.png", "favicon.ico"],
       manifest: {
         name: "Aurora Space Health",
@@ -24,20 +28,8 @@ export default defineConfig({
           { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
         ]
       },
-      workbox: {
-        globPatterns: ["**/*.{js,css,html,png,jpg,svg,woff2}"],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com/,
-            handler: "CacheFirst",
-            options: { cacheName: "google-fonts-stylesheets" }
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com/,
-            handler: "CacheFirst",
-            options: { cacheName: "google-fonts-webfonts", expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 } }
-          }
-        ]
+      injectManifest: {
+        globPatterns: ["**/*.{js,css,html,png,jpg,svg,woff2}"]
       }
     })
   ],
