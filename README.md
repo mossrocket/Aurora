@@ -28,23 +28,6 @@ If the upstream is unreachable, the app falls back to sample data and shows a "S
 
 Aurora sends a generic "solar activity is rising" alert via the Web Push API when the planetary Kp index crosses into storm levels — even when the app is closed. Alerts are anonymous: only an opaque push subscription is stored, never your conditions or sensitivity (those stay on your device and are applied locally).
 
-Setup (one-time):
-
-1. Generate VAPID keys: `npx web-push generate-vapid-keys`
-2. Create an Upstash Redis database at https://console.upstash.com and copy its REST URL + token.
-3. Copy `.env.example` to `.env.local` and fill it in (see that file for every key). Set the same variables in Vercel → Project → Settings → Environment Variables.
-4. Deploy. The Vercel Cron in `vercel.json` calls `/api/cron/check-kp` hourly to check NOAA and fan out alerts.
-
-Pieces: custom service worker (`src/sw.js`, injectManifest), subscribe/unsubscribe functions (`api/push/*`), and the cron sender (`api/cron/check-kp.js`). Notes: frequent crons need a Vercel Pro plan (Hobby is limited to daily — or trigger the endpoint from an external scheduler using `CRON_SECRET`); and on iPhone, Web Push only works once the PWA is added to the Home Screen (iOS 16.4+).
-
-## Tech stack
-
-- **React 18** + **Vite 5** — fast dev and build
-- **Lucide React** — consistent icon set
-- **DM Sans** — clean, modern typography
-- **vite-plugin-pwa** — service worker + manifest generation
-- **WCAG AA compliant** — all text passes 4.5:1 contrast ratio
-
 ## Medical disclaimer
 
 Aurora Space Health is for informational purposes only. It surfaces correlational research between geomagnetic activity and health, and does **not** provide medical advice, diagnosis, or treatment. Always consult a qualified health professional for health decisions.
@@ -55,7 +38,7 @@ Aurora Space Health is for informational purposes only. It surfaces correlationa
 
 ## License
 
-Copyright Peter Alan Gray 2026 
+Copyright The Purple Ohm pty ltd 2026 
 ALL RIGHTS RESERVED
 
 Buy me a coffee? 
