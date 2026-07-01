@@ -23,7 +23,7 @@ const HEALTH_RULES = [
     thresholds: [
       { max: 2, level: "low", desc: "Calm solar conditions. Your cardiovascular system is unlikely to be affected.", tip: "Good day for moderate exercise." },
       { max: 4, level: "low", desc: "Minimal space weather impact on heart health expected today.", tip: "Maintain your usual routine safely." },
-      { max: 6, level: "moderate", desc: "Increased solar activity may slightly raise blood pressure and stress hormones in some people.", tip: "Avoid intense exercise. Stay calm and hydrated." },
+      { max: 6, level: "moderate", desc: "Increased solar activity may slightly raise blood pressure and stress hormones in some people.", tip: "If you're feeling it today, gentler exercise and staying hydrated may help." },
       { max: 9, level: "high", desc: "Strong solar storms have been linked to increased heart-related risks.", tip: "Rest and avoid strenuous exertion today. If you have a heart condition and feel unwell, follow your usual care plan." },
     ],
   },
@@ -50,8 +50,8 @@ const HEALTH_RULES = [
     thresholds: [
       { max: 2, level: "low", desc: "Excellent conditions for deep, restorative sleep tonight.", tip: "Take advantage — aim for 8 hours tonight." },
       { max: 4, level: "low", desc: "Good sleep conditions. Space weather is unlikely to disturb your rest.", tip: "Maintain your usual wind-down routine." },
-      { max: 6, level: "moderate", desc: "Solar activity may interfere with your sleep hormone (melatonin), making it harder to fall asleep.", tip: "Avoid screens 2 hours before bed. Try blackout curtains and a cool room." },
-      { max: 9, level: "high", desc: "Intense solar storms commonly cause difficulty sleeping and vivid dreams.", tip: "Go to bed early. Avoid caffeine after noon and screens in the hour before sleep." },
+      { max: 6, level: "moderate", desc: "Solar activity may interfere with your sleep hormone (melatonin), making it harder to fall asleep.", tip: "Winding down without screens before bed, and a cool, dark room, may help tonight." },
+      { max: 9, level: "high", desc: "Intense solar storms commonly cause difficulty sleeping and vivid dreams.", tip: "An earlier bedtime, less caffeine later in the day, and less screen time before sleep may help tonight." },
     ],
   },
   {
@@ -60,7 +60,7 @@ const HEALTH_RULES = [
       { max: 2, level: "low", desc: "Calm solar conditions support your natural energy levels.", tip: "A productive, energetic day ahead." },
       { max: 4, level: "low", desc: "Space weather is unlikely to affect your energy today.", tip: "Energy levels should remain stable." },
       { max: 6, level: "moderate", desc: "Increased solar activity may cause unexplained tiredness in some people.", tip: "Pace yourself and take short rest breaks when you need them." },
-      { max: 9, level: "high", desc: "Intense solar storms can cause significant fatigue — even for people who aren't usually sensitive.", tip: "Do not push through exhaustion today. Rest is the best medicine." },
+      { max: 9, level: "high", desc: "Intense solar storms can cause significant fatigue — even for people who aren't usually sensitive.", tip: "If you're feeling drained today, rest may be the most helpful thing you can do." },
     ],
   },
   {
@@ -68,7 +68,7 @@ const HEALTH_RULES = [
     thresholds: [
       { max: 2, level: "low", desc: "Calm solar conditions. Neurological sensitivity is unlikely to be triggered today.", tip: "A stable day — good for activities that require concentration and coordination." },
       { max: 4, level: "low", desc: "Minor space weather activity. Most people with neurological conditions won't notice changes.", tip: "Maintain your usual routines and medication schedules." },
-      { max: 6, level: "moderate", desc: "Increased solar activity may affect nerve signalling and inflammation in sensitive individuals. People with MS, epilepsy, or neuropathy may notice increased symptoms.", tip: "Monitor your symptoms. Rest if you feel tingling, numbness, or increased fatigue. Stay cool and hydrated." },
+      { max: 6, level: "moderate", desc: "Increased solar activity may affect nerve signalling and inflammation in sensitive individuals. Some people with neurological conditions report noticing increased symptoms during these periods.", tip: "If you notice tingling, numbness, or increased fatigue, resting, staying cool, and keeping hydrated may help." },
       { max: 9, level: "high", desc: "Intense solar storms can significantly affect the nervous system. People with neurological conditions may experience symptom flares, increased pain, or cognitive difficulty.", tip: "Prioritise rest and avoid overstimulation. Follow your usual care plan if symptoms concern you." },
     ],
   },
@@ -109,7 +109,7 @@ function solarScale(kp) {
 
 const DID_YOU_KNOW = [
   "Geomagnetic storms can affect your body's biological rhythms. Research has found links between strong solar activity and increased rates of migraines, heart rhythm changes, and disrupted sleep.",
-  "Your pineal gland — which produces the sleep hormone melatonin — is sensitive to changes in Earth's magnetic field. That's one reason solar storms can disrupt your sleep.",
+  "Research suggests your pineal gland — which produces the sleep hormone melatonin — may be sensitive to changes in Earth's magnetic field. That may be one reason solar storms can disrupt sleep for some people.",
   "A 2024 study from Brazil found that hospital admissions for heart-related events rose significantly during periods of high solar activity — especially among women over 30.",
   "The sun goes through an 11-year activity cycle. During the peak (solar maximum), storms are more frequent and intense. We're currently near a solar maximum.",
   "Some researchers believe humans have a built-in magnetic sense — similar to migratory birds — which may explain why certain people are more sensitive to space weather than others.",
@@ -852,7 +852,7 @@ function SolarActivityBar({ kp }) {
 function ForecastStrip({ days }) {
   if (!days || days.length === 0) return null;
   return (
-    <section aria-label="3-day solar forecast" className="m-card" style={{ padding: "14px 16px", marginBottom: 16 }}>
+    <section aria-label="3-day outlook" className="m-card" style={{ padding: "14px 16px", marginBottom: 16 }}>
       <div style={{ fontSize: 13, fontWeight: 500, color: T.textTertiary, marginBottom: 12 }}>3-day outlook</div>
       <div style={{ display: "flex", gap: 8 }}>
         {days.map(({ date, kp }) => {
@@ -890,7 +890,7 @@ function HistoryStrip({ days }) {
   if (!days || days.length === 0) return null;
   const maxKp = Math.max(9, ...days.map(d => d.kp));
   return (
-    <section aria-label="7-day solar activity history" className="m-card" style={{ padding: "14px 16px", marginBottom: 16 }}>
+    <section aria-label="Past 7 days" className="m-card" style={{ padding: "14px 16px", marginBottom: 16 }}>
       <div style={{ fontSize: 13, fontWeight: 500, color: T.textTertiary, marginBottom: 12 }}>Past 7 days</div>
       <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 76 }}>
         {days.map(({ date, kp }) => {
@@ -924,10 +924,10 @@ function DashboardHero({ kp, name, risks, today }) {
   let greeting, message;
   if (highN > 0) {
     greeting = `Take it easy today, ${name}`;
-    message = `Solar activity is ${solarPhrase}. This may affect ${highN} of the condition${highN > 1 ? "s" : ""} you track — see the details below.`;
+    message = `Solar activity is ${solarPhrase}. This may affect ${highN} of the conditions you track — see the details below.`;
   } else if (modN > 0) {
     greeting = `Stay mindful today, ${name}`;
-    message = `Solar activity is ${solarPhrase}, but it can still nudge sensitive conditions — ${modN} you track may be more reactive today.`;
+    message = `Solar activity is ${solarPhrase}, but it can still nudge sensitive conditions — ${modN} of the conditions you track may be more reactive today.`;
   } else {
     greeting = `All clear, ${name}`;
     message = `Solar activity is ${solarPhrase} — unlikely to affect you today.`;
@@ -1338,7 +1338,7 @@ export default function AuroraHealth() {
           <section className="fade-up" aria-labelledby="ob-t3">
             <Progress step={3} total={3}/>
             <h2 id="ob-t3" style={{ color: T.text, fontSize: 22, fontWeight: 600, margin: "0 0 4px" }}>Your sensitivity</h2>
-            <p style={{ color: T.textSecondary, fontSize: 14, margin: "0 0 20px", fontWeight: 400 }}>How responsive are you to environmental and atmospheric changes?</p>
+            <p style={{ color: T.textSecondary, fontSize: 14, margin: "0 0 20px", fontWeight: 400 }}>How responsive are you to solar and geomagnetic activity?</p>
             <fieldset style={{ border: "none", padding: 0, margin: "0 0 22px" }}>
               <legend className="sr-only">Select sensitivity</legend>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }} role="radiogroup">
@@ -1726,7 +1726,11 @@ export default function AuroraHealth() {
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500, color: T.text, marginBottom: 3 }}>Data source: NOAA SWPC</div>
                   <p style={{ fontSize: 12, color: T.textTertiary, margin: 0, lineHeight: 1.55, fontWeight: 400 }}>
-                    Live data is pulled from the US National Oceanic and Atmospheric Administration's Space Weather Prediction Center — the world's authoritative source for space weather monitoring. No sign-up or API key needed.
+                    Live data is pulled from the US National Oceanic and Atmospheric Administration's{" "}
+                    <a href="https://www.swpc.noaa.gov/" target="_blank" rel="noopener noreferrer" style={{ color: T.purple, textDecoration: "underline" }}>
+                      Space Weather Prediction Center
+                    </a>{" "}
+                    — the world's authoritative source for space weather monitoring.
                   </p>
                 </div>
               </div>
@@ -1738,7 +1742,7 @@ export default function AuroraHealth() {
               />
 
               <LearnCard
-                title="How can solar weather affect my body?"
+                title="How can space weather affect my body?"
                 body="Your body runs on electrical signals and biological rhythms. Research suggests that fluctuations in Earth's magnetic field during geomagnetic storms can subtly influence these systems — particularly melatonin production (the hormone that regulates your sleep cycle), heart rate variability, blood pressure, and nervous system activity. Not everyone is equally sensitive, but those who are may notice changes in sleep, energy, mood, or pain levels during active solar periods."
                 color={T.purple}
               />
@@ -1790,7 +1794,7 @@ export default function AuroraHealth() {
 
               <LearnCard
                 title="A note on the science"
-                body="This is an active area of research. While many studies show correlations between geomagnetic activity and health effects, establishing definitive cause-and-effect is complex. The mechanisms are still being investigated, and some findings are debated within the scientific community. Aurora presents the best available evidence to help you stay informed — not to diagnose or replace medical advice. If you have concerns about your health, always consult a healthcare professional."
+                body="This is an active area of research. While many studies show correlations between geomagnetic activity and health effects, establishing definitive cause-and-effect is complex. The mechanisms are still being investigated, and some findings are debated within the scientific community. Aurora presents the best available evidence to help you stay informed — not to diagnose or replace medical advice. If you have concerns about your health, always consult a qualified health professional."
                 color={T.textTertiary}
               />
             </div>
